@@ -24,6 +24,7 @@ export function useLocalAuth() {
     fetching: isFetching,
     isAuthenticated: Boolean(user),
     isAdmin: user?.role === "admin",
+    isOidc: user?.isOidc === true,
     logout: () => logoutMutation.mutate(),
   };
 }

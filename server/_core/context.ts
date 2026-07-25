@@ -1,14 +1,11 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
 import { LOCAL_COOKIE_NAME, verifySession, type SessionPayload } from "../localAuth";
 import { getActiveApiToken } from "../db";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: User | null;
-  /** 本地账号会话（用户名/密码登录） */
+  /** 本地账号会话（用户名/密码登录或 OIDC 登录） */
   localSession: SessionPayload | null;
   /** 通过 API Token 认证（iframe 嵌入免登录） */
   tokenAuth: boolean;
@@ -26,16 +23,8 @@ function parseCookie(header: string | undefined, name: string): string | null {
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
   let localSession: SessionPayload | null = null;
   let tokenAuth = false;
-
-  try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
-  }
 
   // 本地会话：从 Cookie 中解析 JWT
   try {
@@ -65,7 +54,6 @@ export async function createContext(
   return {
     req: opts.req,
     res: opts.res,
-    user,
     localSession,
     tokenAuth,
   };

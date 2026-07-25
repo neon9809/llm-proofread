@@ -42,6 +42,12 @@ docker compose logs app | grep "初始密码"
 | `PORT` | 否 | 服务端口，默认 3000 |
 | `TURNSTILE_SITE_KEY` | 否 | Cloudflare Turnstile 站点密钥，与 `TURNSTILE_SECRET_KEY` 同时填写后启用登录页人机验证 |
 | `TURNSTILE_SECRET_KEY` | 否 | Cloudflare Turnstile 密钥，服务端校验 token |
+| `OIDC_ISSUER` | 否 | OIDC IdP issuer，如 `https://accounts.google.com`，与 client_id/client_secret 同时填写后启用 SSO |
+| `OIDC_CLIENT_ID` | 否 | OIDC 客户端 ID |
+| `OIDC_CLIENT_SECRET` | 否 | OIDC 客户端密钥 |
+| `OIDC_SCOPES` | 否 | OIDC scope，默认 `openid profile email` |
+| `OIDC_DISPLAY_NAME` | 否 | 登录页 SSO 按钮文案，默认 `SSO` |
+| `OIDC_APPROVE_REQUIRED` | 否 | `true` 时 OIDC 新用户注册后默认禁用，需管理员在「用户管理」页启用后方可登录 |
 | `FOOTER_BEIAN` | 否 | 登录页底部显示的备案信息文本，留空则不显示 |
 
 ## Cloudflare Turnstile 人机验证（可选）
@@ -60,6 +66,24 @@ docker compose logs app | grep "初始密码"
 ```
 FOOTER_BEIAN: "© 2026 你的公司 · [京ICP备XXXXXXXX号](https://beian.miit.gov.cn/)\n[京公网安备 XXXXXXXX号](http://www.beian.gov.cn/)"
 ```
+
+## OIDC 单点登录（可选）
+
+支持任意标准 OIDC IdP（Google / GitHub / Authentik / Keycloak / Authelia 等）。
+
+1. 在 IdP 创建一个应用，回调地址填 `https://你的域名/api/oidc/callback`
+2. 将 issuer、client_id、client_secret 填入对应环境变量
+3. 重启容器后登录页出现 SSO 按钮，点击跳转 IdP 完成登录
+
+实现细节：
+
+- 标准 Authorization Code Flow + PKCE，state 参数防 CSRF
+- 通过 IdP 的 `.well-known/openid-configuration` 自动发现端点
+- OIDC 用户首次登录自动在 `local_users` 表创建账号（username 为 `oidc:<sub 哈希>`，role=user，无密码），后续登录仅刷新登录信息
+- 开启 `OIDC_APPROVE_REQUIRED=true` 后，新注册的 OIDC 用户默认禁用，需管理员在「用户管理」页启用（用户列表中 OIDC 用户带 `SSO` 标识）；启用前登录会被拒绝并提示待审批
+- 管理员可在「用户管理」将 OIDC 用户提权为 admin
+- OIDC 用户的「修改密码」入口自动隐藏（不通过本地密码登录）
+- 签发的会话 Cookie 与本地密码登录一致，复用同一套认证流程
 
 ## 数据库表初始化
 

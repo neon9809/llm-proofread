@@ -452,7 +452,7 @@ function PasswordTab() {
 // ---------------- 主页面 ----------------
 
 export default function Settings() {
-  const { isAdmin } = useLocalAuth();
+  const { isAdmin, isOidc } = useLocalAuth();
   const params = useParams<{ tab?: string }>();
   const [, navigate] = useLocation();
   const tab = params.tab || "llm";
@@ -475,9 +475,11 @@ export default function Settings() {
             <TabsTrigger value="rules" className="rounded-full text-[13px] gap-1">
               <Replace className="w-3.5 h-3.5" /> 替换规则
             </TabsTrigger>
-            <TabsTrigger value="password" className="rounded-full text-[13px] gap-1">
-              <KeyRound className="w-3.5 h-3.5" /> 密码
-            </TabsTrigger>
+            {!isOidc && (
+              <TabsTrigger value="password" className="rounded-full text-[13px] gap-1">
+                <KeyRound className="w-3.5 h-3.5" /> 密码
+              </TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="llm">
             <LlmConfigTab isAdmin={isAdmin} />
@@ -488,9 +490,11 @@ export default function Settings() {
           <TabsContent value="rules">
             <ReplaceRulesTab isAdmin={isAdmin} />
           </TabsContent>
-          <TabsContent value="password">
-            <PasswordTab />
-          </TabsContent>
+          {!isOidc && (
+            <TabsContent value="password">
+              <PasswordTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </AppShell>

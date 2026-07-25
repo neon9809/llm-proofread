@@ -21,6 +21,21 @@ services:
       # 同时填写 site key 与 secret key 才会启用；留空则不开启验证
       TURNSTILE_SITE_KEY: ""
       TURNSTILE_SECRET_KEY: ""
+      # OIDC 单点登录（可选，登录页生效）
+      # 配置任意标准 OIDC IdP（Google / Authentik / Keycloak / Authelia 等）
+      # 同时填写 issuer/client_id/client_secret 才会启用，登录页出现 SSO 按钮
+      # OIDC_ISSUER: https://accounts.google.com
+      # OIDC_CLIENT_ID: your-client-id
+      # OIDC_CLIENT_SECRET: your-client-secret
+      # OIDC_SCOPES: openid profile email
+      # OIDC_DISPLAY_NAME: 使用 Google 登录
+      OIDC_ISSUER: ""
+      OIDC_CLIENT_ID: ""
+      OIDC_CLIENT_SECRET: ""
+      OIDC_SCOPES: "openid profile email"
+      OIDC_DISPLAY_NAME: "SSO"
+      # OIDC 新用户是否需要管理员手动启用（true=注册后默认禁用，需在用户管理页启用）
+      OIDC_APPROVE_REQUIRED: "false"
       # 登录页底部备案信息（可选，留空则不显示 footer）
       # 支持 markdown 超链接 [文字](URL) 与 \n 换行
       # 示例：© 2026 你的公司 · [京ICP备XXXXXXXX号](https://beian.miit.gov.cn/)\n[京公网安备 XXXXXXXX号](http://www.beian.gov.cn/)

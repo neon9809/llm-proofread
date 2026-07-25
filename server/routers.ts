@@ -1,7 +1,6 @@
-import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getSessionCookieOptions, isSecureRequest } from "./_core/cookies";
+import { isSecureRequest } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
   localAdminProcedure,
@@ -38,14 +37,6 @@ function localCookieOptions(req: { protocol?: string; headers: Record<string, un
 
 export const appRouter = router({
   system: systemRouter,
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
-  }),
 
   /** 本地账号认证 */
   localAuth: router({
@@ -55,11 +46,19 @@ export const appRouter = router({
       const secretKey = process.env.TURNSTILE_SECRET_KEY ?? "";
       // 环境变量里的字面 \n 转为真换行，支持多行备案文本
       const footerBeian = (process.env.FOOTER_BEIAN ?? "").replace(/\\n/g, "\n");
+      // OIDC：同时配置 issuer/client_id/client_secret 才启用
+      const oidcEnabled = Boolean(
+        process.env.OIDC_ISSUER && process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET
+      );
       return {
         turnstile: {
           // 同时配置 siteKey 与 secretKey 才视为启用，避免半配置状态
           enabled: Boolean(siteKey && secretKey),
           siteKey,
+        },
+        oidc: {
+          enabled: oidcEnabled,
+          displayName: process.env.OIDC_DISPLAY_NAME || "SSO",
         },
         footerBeian,
       };
@@ -67,7 +66,7 @@ export const appRouter = router({
 
     me: publicProcedure.query(async ({ ctx }) => {
       if (ctx.tokenAuth && !ctx.localSession) {
-        return { id: 0, username: "embed", displayName: "嵌入访客", role: "user" as const, tokenAuth: true, mustChangePassword: false };
+        return { id: 0, username: "embed", displayName: "嵌入访客", role: "user" as const, tokenAuth: true, mustChangePassword: false, isOidc: false };
       }
       if (!ctx.localSession) return null;
       const user = await db.getLocalUserById(ctx.localSession.uid);
@@ -79,6 +78,8 @@ export const appRouter = router({
         role: user.role,
         tokenAuth: false,
         mustChangePassword: user.mustChangePassword === 1,
+        // OIDC 用户用户名以 oidc: 前缀，不通过本地密码登录，前端据此隐藏修改密码入口
+        isOidc: user.username.startsWith("oidc:"),
       };
     }),
 

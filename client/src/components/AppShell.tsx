@@ -17,7 +17,7 @@ import { useEffect } from "react";
  * 未登录自动跳转登录页。
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, fetching, isAuthenticated, isAdmin, logout } = useLocalAuth();
+  const { user, loading, fetching, isAuthenticated, isAdmin, isOidc, logout } = useLocalAuth();
   const [location, navigate] = useLocation();
 
   useEffect(() => {
@@ -116,9 +116,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuItem onClick={() => navigate("/api-docs")}>
                 <BookOpenText className="w-4 h-4 mr-2" /> API 文档
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/settings/password")}>
-                <KeyRound className="w-4 h-4 mr-2" /> 修改密码
-              </DropdownMenuItem>
+              {!isOidc && (
+                <DropdownMenuItem onClick={() => navigate("/settings/password")}>
+                  <KeyRound className="w-4 h-4 mr-2" /> 修改密码
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {

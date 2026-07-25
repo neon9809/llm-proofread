@@ -155,6 +155,9 @@ function UserListTab() {
                 <TableCell>
                   <span className="font-medium">{u.username}</span>
                   {u.displayName && <span className="text-muted-foreground text-xs ml-1.5">{u.displayName}</span>}
+                  {u.username.startsWith("oidc:") && (
+                    <Badge variant="secondary" className="rounded-full text-[10px] ml-1.5">SSO</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant={u.role === "admin" ? "default" : "secondary"} className="rounded-full text-[11px]">

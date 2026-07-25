@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { BookOpenText, Loader2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -56,7 +56,31 @@ export default function Login() {
   });
   const turnstileEnabled = Boolean(publicSettings?.turnstile.enabled);
   const turnstileSiteKey = publicSettings?.turnstile.siteKey ?? "";
+  const oidcEnabled = Boolean(publicSettings?.oidc.enabled);
+  const oidcDisplayName = publicSettings?.oidc.displayName ?? "SSO";
   const footerBeian = publicSettings?.footerBeian ?? "";
+
+  // 回调失败时 IdP 重定向回 /login?oidc_error=xxx，提示用户
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("oidc_error");
+    if (err) {
+      const msg: Record<string, string> = {
+        invalid_state: "登录状态校验失败，请重试",
+        token_exchange_failed: "SSO 令牌交换失败，请重试",
+        userinfo_failed: "获取用户信息失败，请重试",
+        no_sub: "SSO 返回的用户信息无效",
+        user_create_failed: "用户创建失败，请联系管理员",
+        oidc_not_configured: "SSO 未配置，请联系管理员",
+        oidc_discovery_failed: "无法连接 SSO 服务，请稍后重试",
+        callback_error: "SSO 登录失败，请重试",
+        account_pending_approval: "账号待管理员审批，请稍后再试或联系管理员",
+      };
+      toast.error(msg[err] ?? `SSO 登录失败：${err}`);
+      // 清理 URL 参数，避免刷新重复提示
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: async result => {
@@ -68,6 +92,7 @@ export default function Login() {
         role: result.user.role,
         tokenAuth: false,
         mustChangePassword: result.user.mustChangePassword,
+        isOidc: false,
       });
       if (result.user.mustChangePassword) {
         toast.info("首次登录，请先修改密码");
@@ -161,6 +186,25 @@ export default function Login() {
             {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "登录"}
           </Button>
         </form>
+
+        {oidcEnabled && (
+          <>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
+                <span className="bg-background px-2 text-muted-foreground">或</span>
+              </div>
+            </div>
+            <a
+              href="/api/oidc/login?redirect=/workspace"
+              className="flex items-center justify-center w-full h-11 rounded-xl border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors text-[15px] font-medium pressable"
+            >
+              {oidcDisplayName}
+            </a>
+          </>
+        )}
 
         <p className="text-xs text-muted-foreground text-center mt-6 leading-5">
           首次部署时，管理员账号与随机密码打印在服务启动日志中

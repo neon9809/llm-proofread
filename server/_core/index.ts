@@ -3,7 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
+import { registerOidcRoutes } from "./oidc";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -43,7 +43,7 @@ async function startServer() {
     next();
   });
   registerStorageProxy(app);
-  registerOAuthRoutes(app);
+  registerOidcRoutes(app);
   // 开放 REST API（Token 认证）
   registerOpenApi(app);
   // tRPC API
