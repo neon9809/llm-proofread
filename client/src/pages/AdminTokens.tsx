@@ -55,7 +55,22 @@ export default function AdminTokens() {
 
   const copyText = async (text: string, label: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      // 安全上下文（HTTPS / localhost）使用 Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // HTTP 部署兜底：Clipboard API 不可用，退回 execCommand 同步复制
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (!ok) throw new Error("execCommand copy failed");
+      }
       toast.success(`${label}已复制`);
     } catch {
       toast.error("复制失败");
