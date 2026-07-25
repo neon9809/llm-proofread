@@ -82,3 +82,31 @@ export function generateApiToken(): string {
   for (let i = 0; i < bytes.length; i++) token += chars[bytes[i] % chars.length];
   return token;
 }
+
+/**
+ * 向 Cloudflare Turnstile siteverify 接口校验 token。
+ * @returns true 表示校验通过；false 表示校验失败或异常
+ */
+export async function verifyTurnstileToken(
+  token: string,
+  secretKey: string,
+  remoteip?: string
+): Promise<boolean> {
+  try {
+    const body = new URLSearchParams();
+    body.set("secret", secretKey);
+    body.set("response", token);
+    if (remoteip) body.set("remoteip", remoteip);
+
+    const resp = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body,
+    });
+    if (!resp.ok) return false;
+    const data = (await resp.json()) as { success?: boolean };
+    return data.success === true;
+  } catch {
+    // 网络异常等情况下不阻断登录（避免 CF 不可达时锁死），由调用方决定策略
+    return false;
+  }
+}

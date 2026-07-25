@@ -18,6 +18,7 @@ import {
   hashPassword,
   signSession,
   verifyPassword,
+  verifyTurnstileToken,
 } from "./localAuth";
 import { DEFAULT_PROOFREAD_PROMPT, testLlmConnection } from "./proofread/llmEngine";
 import { proofreadText } from "./proofread/service";
@@ -48,6 +49,20 @@ export const appRouter = router({
 
   /** 本地账号认证 */
   localAuth: router({
+    /** 公开配置：登录页需要的运行时配置（Turnstile 站点密钥、备案信息等） */
+    publicSettings: publicProcedure.query(() => {
+      const siteKey = process.env.TURNSTILE_SITE_KEY ?? "";
+      const secretKey = process.env.TURNSTILE_SECRET_KEY ?? "";
+      return {
+        turnstile: {
+          // 同时配置 siteKey 与 secretKey 才视为启用，避免半配置状态
+          enabled: Boolean(siteKey && secretKey),
+          siteKey,
+        },
+        footerBeian: process.env.FOOTER_BEIAN ?? "",
+      };
+    }),
+
     me: publicProcedure.query(async ({ ctx }) => {
       if (ctx.tokenAuth && !ctx.localSession) {
         return { id: 0, username: "embed", displayName: "嵌入访客", role: "user" as const, tokenAuth: true, mustChangePassword: false };
@@ -66,8 +81,30 @@ export const appRouter = router({
     }),
 
     login: publicProcedure
-      .input(z.object({ username: z.string().min(1).max(64), password: z.string().min(1).max(128) }))
+      .input(
+        z.object({
+          username: z.string().min(1).max(64),
+          password: z.string().min(1).max(128),
+          turnstileToken: z.string().optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
+        // Turnstile 校验：配置了 secret key 时强制要求有效 token
+        const turnstileSecret = process.env.TURNSTILE_SECRET_KEY ?? "";
+        if (turnstileSecret) {
+          if (!input.turnstileToken) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成人机验证" });
+          }
+          const ok = await verifyTurnstileToken(
+            input.turnstileToken,
+            turnstileSecret,
+            getClientIp(ctx.req)
+          );
+          if (!ok) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "人机验证失败，请重试" });
+          }
+        }
+
         const ip = getClientIp(ctx.req);
         const userAgent = typeof ctx.req.headers["user-agent"] === "string" ? ctx.req.headers["user-agent"] : undefined;
         const user = await db.getLocalUserByUsername(input.username);

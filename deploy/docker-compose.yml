@@ -16,6 +16,14 @@ services:
       JWT_SECRET: change-me-to-a-random-secret
       NODE_ENV: production
       PORT: "3000"
+      # Cloudflare Turnstile 人机验证（可选，登录页生效）
+      # 在 https://dash.cloudflare.com -> Turnstile 创建站点获取
+      # 同时填写 site key 与 secret key 才会启用；留空则不开启验证
+      TURNSTILE_SITE_KEY: ""
+      TURNSTILE_SECRET_KEY: ""
+      # 登录页底部备案信息（可选，留空则不显示 footer）
+      # 示例：© 2026 你的公司 · 京ICP备XXXXXXXX号
+      FOOTER_BEIAN: ""
     depends_on:
       db:
         condition: service_healthy

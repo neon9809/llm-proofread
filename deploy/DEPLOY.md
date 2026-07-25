@@ -40,6 +40,20 @@ docker compose logs app | grep "初始密码"
 | `DATABASE_URL` | 是 | MySQL 连接串，如 `mysql://user:pass@host:3306/dbname` |
 | `JWT_SECRET` | 是 | 会话与 Token 签名密钥，请使用足够长的随机字符串 |
 | `PORT` | 否 | 服务端口，默认 3000 |
+| `TURNSTILE_SITE_KEY` | 否 | Cloudflare Turnstile 站点密钥，与 `TURNSTILE_SECRET_KEY` 同时填写后启用登录页人机验证 |
+| `TURNSTILE_SECRET_KEY` | 否 | Cloudflare Turnstile 密钥，服务端校验 token |
+| `FOOTER_BEIAN` | 否 | 登录页底部显示的备案信息文本，留空则不显示 |
+
+## Cloudflare Turnstile 人机验证（可选）
+
+1. 访问 https://dash.cloudflare.com → Turnstile，创建一个站点
+2. 将拿到的 **Site Key** 填入 `TURNSTILE_SITE_KEY`，**Secret Key** 填入 `TURNSTILE_SECRET_KEY`
+3. 重启容器后登录页会出现验证码 widget，登录时由服务端调用 CF siteverify 校验
+4. 两个变量必须同时填写才会启用；任一留空则不开启验证（开发环境友好）
+
+## 登录页备案信息（可选）
+
+将备案文本填入 `FOOTER_BEIAN`，会在登录页底部以小字号 footer 形式显示。支持多行，用 `\n` 转义换行。留空则不显示 footer。
 
 ## 数据库表初始化
 

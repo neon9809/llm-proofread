@@ -1,3 +1,4 @@
+import { Turnstile } from "@/components/Turnstile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,16 @@ export default function Login() {
   const [, navigate] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const utils = trpc.useUtils();
+
+  // 运行时获取 Turnstile 配置与备案信息（后端下发，无需重建镜像）
+  const { data: publicSettings } = trpc.localAuth.publicSettings.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
+  const turnstileEnabled = Boolean(publicSettings?.turnstile.enabled);
+  const turnstileSiteKey = publicSettings?.turnstile.siteKey ?? "";
+  const footerBeian = publicSettings?.footerBeian ?? "";
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: async result => {
@@ -35,6 +45,8 @@ export default function Login() {
     },
     onError: err => {
       toast.error(err.message || "登录失败");
+      // 验证失败后重置 Turnstile，强制重新验证
+      setTurnstileToken("");
     },
   });
 
@@ -44,11 +56,19 @@ export default function Login() {
       toast.error("请输入用户名和密码");
       return;
     }
-    loginMutation.mutate({ username: username.trim(), password });
+    if (turnstileEnabled && !turnstileToken) {
+      toast.error("请先完成人机验证");
+      return;
+    }
+    loginMutation.mutate({
+      username: username.trim(),
+      password,
+      ...(turnstileToken ? { turnstileToken } : {}),
+    });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm animate-pop">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/25">
@@ -82,6 +102,22 @@ export default function Login() {
               className="h-11 rounded-xl"
             />
           </div>
+
+          {turnstileEnabled && turnstileSiteKey && (
+            <div className="flex justify-center">
+              <Turnstile
+                key={turnstileSiteKey}
+                siteKey={turnstileSiteKey}
+                onToken={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => {
+                  setTurnstileToken("");
+                  toast.error("人机验证组件出错，请刷新重试");
+                }}
+              />
+            </div>
+          )}
+
           <Button
             type="submit"
             disabled={loginMutation.isPending}
@@ -95,6 +131,12 @@ export default function Login() {
           首次部署时，管理员账号与随机密码打印在服务启动日志中
         </p>
       </div>
+
+      {footerBeian && (
+        <footer className="mt-8 text-center text-[11px] text-muted-foreground/80 leading-relaxed max-w-md">
+          {footerBeian}
+        </footer>
+      )}
     </div>
   );
 }
