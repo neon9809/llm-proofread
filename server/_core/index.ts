@@ -8,7 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { ensureAdminUser } from "../bootstrap";
+import { bootstrap } from "../bootstrap";
 import { registerOpenApi } from "../openApi";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -70,8 +70,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    // 初始化管理员账号（随机密码打印在日志中）
-    void ensureAdminUser();
+    // 启动初始化：自动执行数据库迁移（建表）后创建管理员账号（随机密码打印在日志中）
+    void bootstrap();
   });
 }
 

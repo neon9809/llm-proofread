@@ -50,6 +50,12 @@
 - [x] mustChangePassword=true 时强制拦截所有受保护页面（/workspace、/settings 其他 tab、/admin/*），仅允许 /settings/password，改完密码后放行（浏览器已验证：访问 /workspace 被重定向，改密后正常进入）
 
 ## GitHub 发布
-- [ ] 推送代码到 neon9809/llm-proofread 仓库
-- [ ] 配置 GitHub Actions 多架构（amd64/arm64）镜像构建，发布到 ghcr.io
-- [ ] README 部署示例使用 ghcr.io 镜像地址
+- [x] 推送代码到 neon9809/llm-proofread 仓库（历史已清理内部备忘/敏感文件）
+- [x] 编写 GitHub Actions 多架构（amd64/arm64）ghcr.io 构建工作流（token 无 workflows 权限，文件已交付用户手动添加）
+- [x] README 部署示例使用 ghcr.io/neon9809 镜像地址，强调多架构支持
+
+## Docker 部署修复
+- [x] 启动时自动执行数据库迁移（建表，幂等，MySQL 未就绪自动重试），再初始化管理员账号
+- [x] 独立部署时 OAuth 环境变量缺失不报错干扰（可选功能降级）
+- [x] 修复 %VITE_ANALYTICS_ENDPOINT% 占位符未替换导致的 URIError（移除 analytics 脚本）
+- [x] 验证后推送 GitHub

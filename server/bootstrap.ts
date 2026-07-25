@@ -5,6 +5,13 @@
  */
 import { createLocalUser, getLocalUserByUsername, listLocalUsers } from "./db";
 import { DEFAULT_ADMIN_USERNAME, generateRandomPassword, hashPassword } from "./localAuth";
+import { runMigrations } from "./migrate";
+
+/** 启动初始化入口：先执行数据库迁移，再确保管理员账号存在 */
+export async function bootstrap(): Promise<void> {
+  await runMigrations();
+  await ensureAdminUser();
+}
 
 export async function ensureAdminUser(): Promise<void> {
   try {
