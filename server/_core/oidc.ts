@@ -296,8 +296,14 @@ export function registerOidcRoutes(app: Express): void {
     // 无状态 state：从 state 参数本身解析（HMAC 签名校验），不依赖 cookie
     const stored = stateParam ? decodeState(stateParam) : null;
 
+    // IdP 授权失败时会带 error/error_description 而非 code，记录便于排查
+    const error = typeof req.query.error === "string" ? req.query.error : "";
+    const errorDesc = typeof req.query.error_description === "string" ? req.query.error_description : "";
+    if (error) {
+      console.warn("[OIDC] IdP returned error:", error, "| desc:", errorDesc);
+    }
     if (!code || !stored) {
-      console.warn("[OIDC] invalid_state: code=", Boolean(code), "stateLen=", stateParam.length, "stateHead=", stateParam.slice(0, 40));
+      console.warn("[OIDC] invalid_state: code=", Boolean(code), "stateLen=", stateParam.length, "stateHead=", stateParam.slice(0, 40), "allQuery=", JSON.stringify(req.query));
       redirectToLogin(res, "invalid_state");
       return;
     }
