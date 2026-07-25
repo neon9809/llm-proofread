@@ -140,7 +140,10 @@ function encodeState(payload: StatePayload): string {
 /** 校验并解析 state 参数；签名不符或格式错误返回 null */
 function decodeState(state: string): StatePayload | null {
   const dot = state.indexOf(".");
-  if (dot === -1) return null;
+  if (dot === -1) {
+    console.warn("[OIDC] decodeState: no dot in state, len=", state.length);
+    return null;
+  }
   const body = state.slice(0, dot);
   const sig = state.slice(dot + 1);
   const expectedSig = createHmac("sha256", getOidcStateSecret())
@@ -150,7 +153,10 @@ function decodeState(state: string): StatePayload | null {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
-  if (sig !== expectedSig) return null;
+  if (sig !== expectedSig) {
+    console.warn("[OIDC] decodeState: sig mismatch", "got=", sig.slice(0, 20), "expected=", expectedSig.slice(0, 20));
+    return null;
+  }
   try {
     const parsed = JSON.parse(base64UrlDecodeStr(body)) as StatePayload;
     if (typeof parsed.v === "string" && typeof parsed.r === "string" && typeof parsed.n === "string") {
@@ -291,6 +297,7 @@ export function registerOidcRoutes(app: Express): void {
     const stored = stateParam ? decodeState(stateParam) : null;
 
     if (!code || !stored) {
+      console.warn("[OIDC] invalid_state: code=", Boolean(code), "stateLen=", stateParam.length, "stateHead=", stateParam.slice(0, 40));
       redirectToLogin(res, "invalid_state");
       return;
     }
