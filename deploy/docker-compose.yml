@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    image: ghcr.io/OWNER/llm-proofread:latest
+    image: ghcr.io/neon9809/llm-proofread:latest
     # 或本地构建：
     # build:
     #   context: ..

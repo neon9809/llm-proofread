@@ -25,7 +25,7 @@ React 19 + Tailwind 4 + shadcn/ui（前端），Express 4 + tRPC 11 + Drizzle OR
 镜像发布于 GitHub Container Registry（ghcr.io），支持 `linux/amd64` 与 `linux/arm64` 多架构。
 
 ```bash
-docker pull ghcr.io/OWNER/llm-proofread:latest
+docker pull ghcr.io/neon9809/llm-proofread:latest
 ```
 
 或使用 Docker Compose：

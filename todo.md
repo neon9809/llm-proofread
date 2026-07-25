@@ -48,3 +48,8 @@
 ## Bug 修复
 - [x] 首次登录 mustChangePassword 只提示不跳转 → 登录后强制跳转修改密码页（修复 me 缓存竞态导致 AppShell 误判未登录跳回 /login）
 - [x] mustChangePassword=true 时强制拦截所有受保护页面（/workspace、/settings 其他 tab、/admin/*），仅允许 /settings/password，改完密码后放行（浏览器已验证：访问 /workspace 被重定向，改密后正常进入）
+
+## GitHub 发布
+- [ ] 推送代码到 neon9809/llm-proofread 仓库
+- [ ] 配置 GitHub Actions 多架构（amd64/arm64）镜像构建，发布到 ghcr.io
+- [ ] README 部署示例使用 ghcr.io 镜像地址
