@@ -22,7 +22,8 @@ services:
       TURNSTILE_SITE_KEY: ""
       TURNSTILE_SECRET_KEY: ""
       # 登录页底部备案信息（可选，留空则不显示 footer）
-      # 示例：© 2026 你的公司 · 京ICP备XXXXXXXX号
+      # 支持 markdown 超链接 [文字](URL) 与 \n 换行
+      # 示例：© 2026 你的公司 · [京ICP备XXXXXXXX号](https://beian.miit.gov.cn/)\n[京公网安备 XXXXXXXX号](http://www.beian.gov.cn/)
       FOOTER_BEIAN: ""
     depends_on:
       db:

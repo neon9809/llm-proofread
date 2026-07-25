@@ -4,9 +4,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { BookOpenText, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+
+/**
+ * 解析备案文本中的 [text](url) markdown 链接，返回 React 节点数组。
+ * 仅支持 http/https 链接（防 javascript: 等 XSS），其余按纯文本渲染。
+ * 换行符由 footer 的 whitespace-pre-line 样式保留。
+ */
+const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+function renderBeianMarkdown(text: string, baseKey: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let i = 0;
+  while ((match = LINK_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+    const [, label, url] = match;
+    nodes.push(
+      <a
+        key={`${baseKey}-l${i++}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:text-foreground transition-colors"
+      >
+        {label}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+  return nodes;
+}
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -133,8 +168,8 @@ export default function Login() {
       </div>
 
       {footerBeian && (
-        <footer className="mt-8 text-center text-[11px] text-muted-foreground/80 leading-relaxed max-w-md">
-          {footerBeian}
+        <footer className="mt-8 text-center text-[11px] text-muted-foreground/80 leading-relaxed max-w-md whitespace-pre-line">
+          {renderBeianMarkdown(footerBeian, "beian")}
         </footer>
       )}
     </div>

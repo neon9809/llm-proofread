@@ -53,13 +53,15 @@ export const appRouter = router({
     publicSettings: publicProcedure.query(() => {
       const siteKey = process.env.TURNSTILE_SITE_KEY ?? "";
       const secretKey = process.env.TURNSTILE_SECRET_KEY ?? "";
+      // 环境变量里的字面 \n 转为真换行，支持多行备案文本
+      const footerBeian = (process.env.FOOTER_BEIAN ?? "").replace(/\\n/g, "\n");
       return {
         turnstile: {
           // 同时配置 siteKey 与 secretKey 才视为启用，避免半配置状态
           enabled: Boolean(siteKey && secretKey),
           siteKey,
         },
-        footerBeian: process.env.FOOTER_BEIAN ?? "",
+        footerBeian,
       };
     }),
 

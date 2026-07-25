@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import { copyToClipboard } from "@/lib/utils";
 import { Ban, Copy, KeyRound, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -54,27 +55,9 @@ export default function AdminTokens() {
   });
 
   const copyText = async (text: string, label: string) => {
-    try {
-      // 安全上下文（HTTPS / localhost）使用 Clipboard API
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        // HTTP 部署兜底：Clipboard API 不可用，退回 execCommand 同步复制
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (!ok) throw new Error("execCommand copy failed");
-      }
-      toast.success(`${label}已复制`);
-    } catch {
-      toast.error("复制失败");
-    }
+    const ok = await copyToClipboard(text);
+    if (ok) toast.success(`${label}已复制`);
+    else toast.error("复制失败，请手动选择文本复制");
   };
 
   const embedBase = typeof window !== "undefined" ? window.location.origin : "";

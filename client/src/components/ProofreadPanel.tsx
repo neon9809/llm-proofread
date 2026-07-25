@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { copyToClipboard } from "@/lib/utils";
 import {
   AlertTriangle,
   Check,
@@ -109,12 +110,9 @@ export function ProofreadPanel({ compact = false }: { compact?: boolean }) {
   }, [paragraphs]);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(finalText);
-      toast.success("已复制全文到剪贴板");
-    } catch {
-      toast.error("复制失败，请手动选择文本复制");
-    }
+    const ok = await copyToClipboard(finalText);
+    if (ok) toast.success("已复制全文到剪贴板");
+    else toast.error("复制失败，请手动选择文本复制");
   };
 
   const handleAcceptAll = () => {

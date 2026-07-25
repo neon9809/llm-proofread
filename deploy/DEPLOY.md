@@ -53,7 +53,13 @@ docker compose logs app | grep "初始密码"
 
 ## 登录页备案信息（可选）
 
-将备案文本填入 `FOOTER_BEIAN`，会在登录页底部以小字号 footer 形式显示。支持多行，用 `\n` 转义换行。留空则不显示 footer。
+将备案文本填入 `FOOTER_BEIAN`，会在登录页底部以小字号 footer 形式显示。支持 markdown 超链接格式 `[文字](URL)`（仅 http/https），用 `\n` 换行。留空则不显示 footer。
+
+示例：
+
+```
+FOOTER_BEIAN: "© 2026 你的公司 · [京ICP备XXXXXXXX号](https://beian.miit.gov.cn/)\n[京公网安备 XXXXXXXX号](http://www.beian.gov.cn/)"
+```
 
 ## 数据库表初始化
 
