@@ -135,7 +135,7 @@ export const appRouter = router({
       }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
-      ctx.res.clearCookie(LOCAL_COOKIE_NAME, { ...localCookieOptions(ctx.req), maxAge: -1 });
+      ctx.res.clearCookie(LOCAL_COOKIE_NAME, localCookieOptions(ctx.req));
       return { success: true } as const;
     }),
 

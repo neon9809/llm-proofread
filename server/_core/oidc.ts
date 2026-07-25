@@ -140,10 +140,7 @@ function encodeState(payload: StatePayload): string {
 /** 校验并解析 state 参数；签名不符或格式错误返回 null */
 function decodeState(state: string): StatePayload | null {
   const dot = state.indexOf(".");
-  if (dot === -1) {
-    console.warn("[OIDC] decodeState: no dot in state, len=", state.length);
-    return null;
-  }
+  if (dot === -1) return null;
   const body = state.slice(0, dot);
   const sig = state.slice(dot + 1);
   const expectedSig = createHmac("sha256", getOidcStateSecret())
@@ -153,10 +150,7 @@ function decodeState(state: string): StatePayload | null {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
-  if (sig !== expectedSig) {
-    console.warn("[OIDC] decodeState: sig mismatch", "got=", sig.slice(0, 20), "expected=", expectedSig.slice(0, 20));
-    return null;
-  }
+  if (sig !== expectedSig) return null;
   try {
     const parsed = JSON.parse(base64UrlDecodeStr(body)) as StatePayload;
     if (typeof parsed.v === "string" && typeof parsed.r === "string" && typeof parsed.n === "string") {
@@ -296,14 +290,15 @@ export function registerOidcRoutes(app: Express): void {
     // 无状态 state：从 state 参数本身解析（HMAC 签名校验），不依赖 cookie
     const stored = stateParam ? decodeState(stateParam) : null;
 
-    // IdP 授权失败时会带 error/error_description 而非 code，记录便于排查
+    // IdP 授权失败时会带 error/error_description 而非 code
     const error = typeof req.query.error === "string" ? req.query.error : "";
     const errorDesc = typeof req.query.error_description === "string" ? req.query.error_description : "";
     if (error) {
       console.warn("[OIDC] IdP returned error:", error, "| desc:", errorDesc);
+      redirectToLogin(res, "idp_error");
+      return;
     }
     if (!code || !stored) {
-      console.warn("[OIDC] invalid_state: code=", Boolean(code), "stateLen=", stateParam.length, "stateHead=", stateParam.slice(0, 40), "allQuery=", JSON.stringify(req.query));
       redirectToLogin(res, "invalid_state");
       return;
     }

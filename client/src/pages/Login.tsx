@@ -75,6 +75,7 @@ export default function Login() {
         oidc_discovery_failed: "无法连接 SSO 服务，请稍后重试",
         callback_error: "SSO 登录失败，请重试",
         account_pending_approval: "账号待管理员审批，请稍后再试或联系管理员",
+        idp_error: "SSO 服务拒绝了授权，请检查 IdP 端该应用的访问权限配置",
       };
       toast.error(msg[err] ?? `SSO 登录失败：${err}`);
       // 清理 URL 参数，避免刷新重复提示
