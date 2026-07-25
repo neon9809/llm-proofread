@@ -15,6 +15,13 @@
       "when": 1784989990416,
       "tag": "0001_rainy_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785000000000,
+      "tag": "0002_add_concurrency",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ export const llmConfigs = mysqlTable("llm_configs", {
   model: varchar("model", { length: 128 }).notNull(),
   prompt: text("prompt"),
   temperature: varchar("temperature", { length: 16 }).default("0.2"),
+  concurrency: int("concurrency").default(5).notNull(),
   isDefault: int("isDefault").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

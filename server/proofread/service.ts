@@ -36,7 +36,7 @@ export interface ProofreadResult {
 }
 
 export async function proofreadText(text: string, options: ProofreadOptions = {}): Promise<ProofreadResult> {
-  const { useLlm = true, useRules = true, llmConfigId, concurrency = 3 } = options;
+  const { useLlm = true, useRules = true, llmConfigId } = options;
 
   const paragraphs = splitParagraphs(text);
   const [forbidden, rules] = useRules
@@ -52,6 +52,8 @@ export async function proofreadText(text: string, options: ProofreadOptions = {}
       llmConfigName = cfg.name;
     }
   }
+  // 并发数优先用 LLM 配置里的值，其次 options 传入，默认 5
+  const concurrency = options.concurrency ?? llmConfig?.concurrency ?? 5;
 
   const results: ParagraphResult[] = paragraphs.map(p => ({
     index: p.index,

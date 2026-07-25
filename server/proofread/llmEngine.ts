@@ -8,6 +8,7 @@ export interface LlmProofreadConfig {
   model: string;
   prompt?: string | null;
   temperature?: string | null;
+  concurrency?: number;
 }
 
 export interface LlmParagraphResult {

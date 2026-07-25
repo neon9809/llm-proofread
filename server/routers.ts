@@ -240,6 +240,7 @@ export const appRouter = router({
         model: c.model,
         prompt: c.prompt,
         temperature: c.temperature,
+        concurrency: c.concurrency,
         isDefault: c.isDefault === 1,
       }));
     }),
@@ -254,6 +255,7 @@ export const appRouter = router({
         model: z.string().min(1).max(128),
         prompt: z.string().max(4000).optional(),
         temperature: z.string().optional(),
+        concurrency: z.number().int().min(1).max(100).optional(),
         isDefault: z.boolean().default(false),
       }))
       .mutation(async ({ input }) => {
@@ -264,6 +266,7 @@ export const appRouter = router({
           model: input.model,
           prompt: input.prompt,
           temperature: input.temperature ?? "0.2",
+          concurrency: input.concurrency ?? 5,
           isDefault: 0,
         });
         if (input.isDefault) {
@@ -283,6 +286,7 @@ export const appRouter = router({
         model: z.string().min(1).max(128).optional(),
         prompt: z.string().max(4000).optional(),
         temperature: z.string().optional(),
+        concurrency: z.number().int().min(1).max(100).optional(),
       }))
       .mutation(async ({ input }) => {
         const { id, apiKey, ...rest } = input;

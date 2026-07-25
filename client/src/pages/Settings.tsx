@@ -33,6 +33,7 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
     model: "",
     prompt: "",
     temperature: "0.2",
+    concurrency: "5",
   });
 
   const invalidate = () => utils.llmConfigs.list.invalidate();
@@ -40,7 +41,7 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
     onSuccess: () => {
       invalidate();
       setOpen(false);
-      setForm({ name: "", baseUrl: "", apiKey: "", model: "", prompt: "", temperature: "0.2" });
+      setForm({ name: "", baseUrl: "", apiKey: "", model: "", prompt: "", temperature: "0.2", concurrency: "5" });
       toast.success("LLM 配置已添加");
     },
     onError: e => toast.error(e.message),
@@ -135,6 +136,20 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
                     placeholder="0.2"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>并发数</Label>
+                  <Input
+                    value={form.concurrency}
+                    onChange={e => setForm({ ...form, concurrency: e.target.value })}
+                    placeholder="5"
+                    type="number"
+                    min={1}
+                    max={100}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    段落级并发调用数，取决于服务商并发上限（1-100）
+                  </p>
+                </div>
                 <Button
                   className="w-full pressable"
                   disabled={createMutation.isPending}
@@ -145,6 +160,7 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
                     }
                     createMutation.mutate({
                       ...form,
+                      concurrency: Number(form.concurrency) || 5,
                       prompt: form.prompt || undefined,
                       isDefault: (configs?.length ?? 0) === 0,
                     });
@@ -179,7 +195,7 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {c.model} · {c.baseUrl} · Key: {c.apiKeyMasked}
+                  {c.model} · {c.baseUrl} · Key: {c.apiKeyMasked} · 并发 {c.concurrency ?? 5}
                 </p>
               </div>
               {isAdmin && (
