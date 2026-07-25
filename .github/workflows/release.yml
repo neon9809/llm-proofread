@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## 核心功能
+
+            - **双重审核引擎**：违禁词检测 + 不规范表述替换 + LLM 校对，结构化 JSON 输出
+            - **段落级 Inline Diff**：绿色新增、红色删除、违禁词标红，逐段接受/忽略
+            - **LLM 配置管理**：OpenAI / DeepSeek / 通义千问等 OpenAI 兼容接口
+            - **违禁词与替换规则管理**：键值对增删改查、批量导入
+            - **本地账号认证**：JWT 会话、登录 IP 记录、用户管理、强制改密
+            - **API Token 管理**：管理员生成/吊销，开放校对 API
+            - **iframe 免登录嵌入**：`?token=pk_xxx` 精简界面
+
+            ## 部署与认证
+
+            - **Docker 多架构镜像**（amd64/arm64）一键部署
+            - **Cloudflare Turnstile 人机验证**（可选）
+            - **OIDC 单点登录**：标准 Authorization Code Flow + PKCE，无状态 state 方案
+            - **OIDC_APPROVE_REQUIRED**：新用户需管理员审批
+            - **登录页备案 footer**：支持 markdown 超链接
+            - **HTTP/HTTPS 自适应会话 Cookie**
+
+            ## Docker 镜像
+
+            ```
+            docker pull ghcr.io/neon9809/llm-proofread:latest
+            ```
+
+            ## 快速部署
+
+            ```bash
+            cd deploy
+            docker compose up -d
+            docker compose logs app | grep 初始密码
+            ```
+
+            详见 [部署指南](deploy/DEPLOY.md)。
