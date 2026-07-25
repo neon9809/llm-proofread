@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { writeAuditLog } from "./auditLog";
+import { writeAuditLog, tokenShortId } from "./auditLog";
 import { isSecureRequest } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
@@ -450,6 +450,16 @@ export const appRouter = router({
         // 审计日志
         const userAgent = typeof ctx.req.headers["user-agent"] === "string" ? ctx.req.headers["user-agent"] : "";
         const ip = getClientIp(ctx.req);
+        const correctedFull = result.paragraphs.map(p => p.corrected).join("\n");
+        const paragraphsForLog = result.paragraphs.map(p => ({
+          index: p.index,
+          original: p.original,
+          corrected: p.corrected,
+          changed: p.changed,
+          llmReason: p.llmReason,
+          llmError: p.llmError ?? null,
+          ruleHits: p.ruleHits.map(h => ({ type: h.type, word: h.word, replacement: h.replacement ?? null })),
+        }));
         if (ctx.localSession) {
           writeAuditLog({
             ip,
@@ -457,17 +467,20 @@ export const appRouter = router({
             authLabel: `用户(${ctx.localSession.username})`,
             sourceName: ctx.localSession.username,
             originalText: input.text,
-            correctedText: result.paragraphs.map(p => p.corrected).join("\n"),
+            correctedText: correctedFull,
             llmConfigName: result.llmConfigName ?? null,
-            paragraphs: result.paragraphs.map(p => ({
-              index: p.index,
-              original: p.original,
-              corrected: p.corrected,
-              changed: p.changed,
-              llmReason: p.llmReason,
-              llmError: p.llmError ?? null,
-              ruleHits: p.ruleHits.map(h => ({ type: h.type, word: h.word, replacement: h.replacement ?? null })),
-            })),
+            paragraphs: paragraphsForLog,
+          });
+        } else if (ctx.tokenAuth && ctx.tokenRecord) {
+          writeAuditLog({
+            ip,
+            userAgent,
+            authLabel: `API Token(${ctx.tokenRecord.name})`,
+            sourceName: `token-${tokenShortId(ctx.tokenRecord.token)}`,
+            originalText: input.text,
+            correctedText: correctedFull,
+            llmConfigName: result.llmConfigName ?? null,
+            paragraphs: paragraphsForLog,
           });
         }
 
