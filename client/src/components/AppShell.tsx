@@ -17,14 +17,23 @@ import { useEffect } from "react";
  * 未登录自动跳转登录页。
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAuthenticated, isAdmin, logout } = useLocalAuth();
+  const { user, loading, fetching, isAuthenticated, isAdmin, logout } = useLocalAuth();
   const [location, navigate] = useLocation();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    // 仅在查询完全结束且确实未认证时才跳转，避免 refetch 窗口期误判
+    if (!loading && !fetching && !isAuthenticated) {
       navigate("/login");
     }
-  }, [loading, isAuthenticated, navigate]);
+  }, [loading, fetching, isAuthenticated, navigate]);
+
+  // 强制修改密码拦截：未完成初始密码修改前，只允许停留在修改密码页
+  const mustChangePassword = Boolean(user && !user.tokenAuth && user.mustChangePassword);
+  useEffect(() => {
+    if (mustChangePassword && location !== "/settings/password") {
+      navigate("/settings/password");
+    }
+  }, [mustChangePassword, location, navigate]);
 
   if (loading) {
     return (

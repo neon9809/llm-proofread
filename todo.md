@@ -44,3 +44,7 @@
 - [x] Dockerfile 与 docker-compose.yml（容器一键部署，多架构 amd64/arm64）
 - [x] README 文档（部署指南、API 文档、Credit）
 - [x] 浏览器联调验证核心流程（登录、规则校对、Inline Diff、接受/忽略、Token 免登录嵌入）
+
+## Bug 修复
+- [x] 首次登录 mustChangePassword 只提示不跳转 → 登录后强制跳转修改密码页（修复 me 缓存竞态导致 AppShell 误判未登录跳回 /login）
+- [x] mustChangePassword=true 时强制拦截所有受保护页面（/workspace、/settings 其他 tab、/admin/*），仅允许 /settings/password，改完密码后放行（浏览器已验证：访问 /workspace 被重定向，改密后正常进入）

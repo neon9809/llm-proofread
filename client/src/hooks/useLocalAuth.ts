@@ -6,9 +6,10 @@ import { trpc } from "@/lib/trpc";
  */
 export function useLocalAuth() {
   const utils = trpc.useUtils();
-  const { data: user, isLoading } = trpc.localAuth.me.useQuery(undefined, {
+  const { data: user, isLoading, isFetching } = trpc.localAuth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    placeholderData: prev => prev,
   });
 
   const logoutMutation = trpc.localAuth.logout.useMutation({
@@ -20,6 +21,7 @@ export function useLocalAuth() {
   return {
     user: user ?? null,
     loading: isLoading,
+    fetching: isFetching,
     isAuthenticated: Boolean(user),
     isAdmin: user?.role === "admin",
     logout: () => logoutMutation.mutate(),

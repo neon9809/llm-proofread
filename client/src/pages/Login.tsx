@@ -15,13 +15,23 @@ export default function Login() {
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: async result => {
-      await utils.localAuth.me.invalidate();
+      // 直接写入 me 缓存，避免 invalidate 触发 refetch 造成 AppShell 未认证误判跳回登录页
+      utils.localAuth.me.setData(undefined, {
+        id: result.user.id,
+        username: result.user.username,
+        displayName: null,
+        role: result.user.role,
+        tokenAuth: false,
+        mustChangePassword: result.user.mustChangePassword,
+      });
       if (result.user.mustChangePassword) {
         toast.info("首次登录，请先修改密码");
         navigate("/settings/password");
       } else {
         navigate("/workspace");
       }
+      // 后台静默刷新一次，确保数据与服务端一致
+      void utils.localAuth.me.invalidate();
     },
     onError: err => {
       toast.error(err.message || "登录失败");
