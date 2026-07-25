@@ -17,7 +17,15 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // 显式配置连接池，提升并发能力（mysql2 默认仅 10 连接）
+      _db = drizzle({
+        connection: {
+          uri: process.env.DATABASE_URL,
+          connectionLimit: 20,
+          waitForConnections: true,
+          queueLimit: 0,
+        },
+      });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -150,42 +158,75 @@ export async function setDefaultLlmConfig(id: number) {
 
 // ---------- 违禁词 ----------
 
+// 简单 TTL 内存缓存：违禁词、替换规则、默认 LLM 配置变化不频繁，
+// 缓存 30s 可大幅降低高并发校对时的数据库压力。写操作后自动失效。
+function createTtlCache<T>() {
+  let value: T | undefined;
+  let expiresAt = 0;
+  return {
+    get: () => (Date.now() < expiresAt ? value : undefined),
+    set: (v: T) => {
+      value = v;
+      expiresAt = Date.now() + 30_000;
+    },
+    invalidate: () => {
+      value = undefined;
+      expiresAt = 0;
+    },
+  };
+}
+
+const forbiddenWordsCache = createTtlCache<unknown[]>();
+const replaceRulesCache = createTtlCache<unknown[]>();
+
 export async function listForbiddenWords() {
+  const cached = forbiddenWordsCache.get();
+  if (cached) return cached as never;
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(forbiddenWords).orderBy(desc(forbiddenWords.createdAt));
+  const rows = await db.select().from(forbiddenWords).orderBy(desc(forbiddenWords.createdAt));
+  forbiddenWordsCache.set(rows);
+  return rows;
 }
 
 export async function addForbiddenWord(word: string, category = "general") {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   await db.insert(forbiddenWords).values({ word, category }).onDuplicateKeyUpdate({ set: { category } });
+  forbiddenWordsCache.invalidate();
 }
 
 export async function deleteForbiddenWord(id: number) {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   await db.delete(forbiddenWords).where(eq(forbiddenWords.id, id));
+  forbiddenWordsCache.invalidate();
 }
 
 // ---------- 替换规则 ----------
 
 export async function listReplaceRules() {
+  const cached = replaceRulesCache.get();
+  if (cached) return cached as never;
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(replaceRules).orderBy(desc(replaceRules.createdAt));
+  const rows = await db.select().from(replaceRules).orderBy(desc(replaceRules.createdAt));
+  replaceRulesCache.set(rows);
+  return rows;
 }
 
 export async function addReplaceRule(pattern: string, replacement: string, note?: string) {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   await db.insert(replaceRules).values({ pattern, replacement, note }).onDuplicateKeyUpdate({ set: { replacement, note } });
+  replaceRulesCache.invalidate();
 }
 
 export async function deleteReplaceRule(id: number) {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   await db.delete(replaceRules).where(eq(replaceRules.id, id));
+  replaceRulesCache.invalidate();
 }
 
 export async function updateReplaceRule(
@@ -195,6 +236,7 @@ export async function updateReplaceRule(
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   await db.update(replaceRules).set(patch).where(eq(replaceRules.id, id));
+  replaceRulesCache.invalidate();
 }
 
 // ---------- API Token ----------
