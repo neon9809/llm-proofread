@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getSessionCookieOptions } from "./_core/cookies";
+import { getSessionCookieOptions, isSecureRequest } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
   localAdminProcedure,
@@ -23,10 +23,14 @@ import { DEFAULT_PROOFREAD_PROMPT, testLlmConnection } from "./proofread/llmEngi
 import { proofreadText } from "./proofread/service";
 
 function localCookieOptions(req: { protocol?: string; headers: Record<string, unknown> }) {
+  const secure = isSecureRequest(req as never);
   return {
     httpOnly: true,
-    secure: true,
-    sameSite: "none" as const,
+    // Secure Cookie 仅在 HTTPS 下生效；HTTP 部署（如 docker 直接暴露端口）需关掉 secure，
+    // 否则浏览器会丢弃会话 Cookie，导致登录后立即被判定为未认证。
+    // SameSite=None 要求必须同时带 Secure，故 HTTP 下回退为 Lax。
+    secure,
+    sameSite: (secure ? "none" : "lax") as "none" | "lax",
     path: "/",
   };
 }
