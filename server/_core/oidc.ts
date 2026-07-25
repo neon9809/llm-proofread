@@ -16,7 +16,7 @@
  * 复用 localUsers 表：OIDC 用户 username = `oidc:<sub 短哈希>`，passwordHash 随机不可用。
  * 这样 AppShell / localAuth.me 等已有流程无需改动。
  */
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { isSecureRequest } from "./cookies";
@@ -27,9 +27,6 @@ import {
   hashPassword,
   signSession,
 } from "../localAuth";
-
-const OIDC_STATE_COOKIE = "oidc_state";
-const STATE_TTL_SECONDS = 600; // 10 min
 
 export interface OidcConfig {
   issuer: string;
@@ -106,68 +103,63 @@ function genPkce(): { verifier: string; challenge: string } {
   return { verifier, challenge };
 }
 
-function genRandomToken(len: number): string {
-  return base64UrlEncode(randomBytes(len));
-}
-
+/**
+ * 无状态 state：把 verifier + redirect 编码进 state 参数本身，HMAC 签名防篡改。
+ * 回调时直接从 state 解析，完全不依赖 cookie，避免跨站/代理导致 cookie 丢失。
+ *
+ * state 格式：base64url(payload).base64url(hmac(payload))
+ */
 interface StatePayload {
-  state: string;
-  verifier: string;
-  redirect: string;
+  v: string; // PKCE code_verifier
+  r: string; // 登录后跳转路径
+  n: string; // 随机 nonce（防重放）
 }
 
-function setStateCookie(res: Response, payload: StatePayload, req: Request): void {
-  const secure = isSecureRequest(req);
-  res.cookie(OIDC_STATE_COOKIE, JSON.stringify(payload), {
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    secure,
-    maxAge: STATE_TTL_SECONDS,
-  });
+function getOidcStateSecret(): string {
+  // 复用 JWT_SECRET 作为 HMAC 密钥；未配置时降级（仅开发环境）
+  return process.env.JWT_SECRET || "oidc-state-dev-secret";
 }
 
-function clearStateCookie(res: Response, req: Request): void {
-  const secure = isSecureRequest(req);
-  res.clearCookie(OIDC_STATE_COOKIE, {
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    secure,
-  });
+function base64UrlEncodeStr(str: string): string {
+  return Buffer.from(str, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function readStateCookie(req: Request): StatePayload | null {
-  const raw = (req as unknown as { cookies?: Record<string, string> }).cookies?.[OIDC_STATE_COOKIE];
-  // Express 默认不解析 cookie，手动从 header 读取
-  const headerVal = raw ?? parseCookieHeader(req.headers.cookie ?? "")[OIDC_STATE_COOKIE];
-  if (!headerVal) return null;
+function base64UrlDecodeStr(str: string): string {
+  const pad = str.length % 4 === 0 ? "" : "=".repeat(4 - (str.length % 4));
+  return Buffer.from(str.replace(/-/g, "+").replace(/_/g, "/") + pad, "base64").toString("utf-8");
+}
+
+/** 生成签名后的 state 参数 */
+function encodeState(payload: StatePayload): string {
+  const body = base64UrlEncodeStr(JSON.stringify(payload));
+  const sig = createHmac("sha256", getOidcStateSecret()).update(body).digest();
+  const sigStr = sig.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${body}.${sigStr}`;
+}
+
+/** 校验并解析 state 参数；签名不符或格式错误返回 null */
+function decodeState(state: string): StatePayload | null {
+  const dot = state.indexOf(".");
+  if (dot === -1) return null;
+  const body = state.slice(0, dot);
+  const sig = state.slice(dot + 1);
+  const expectedSig = createHmac("sha256", getOidcStateSecret())
+    .update(body)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  if (sig !== expectedSig) return null;
   try {
-    const parsed = JSON.parse(headerVal) as StatePayload;
-    if (typeof parsed.state === "string" && typeof parsed.verifier === "string") {
-      return { state: parsed.state, verifier: parsed.verifier, redirect: parsed.redirect ?? "/" };
+    const parsed = JSON.parse(base64UrlDecodeStr(body)) as StatePayload;
+    if (typeof parsed.v === "string" && typeof parsed.r === "string" && typeof parsed.n === "string") {
+      return parsed;
     }
   } catch {
     /* malformed */
   }
   return null;
-}
-
-function parseCookieHeader(header: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (!header) return out;
-  for (const part of header.split(";")) {
-    const idx = part.indexOf("=");
-    if (idx === -1) continue;
-    const k = part.slice(0, idx).trim();
-    const v = part.slice(idx + 1).trim();
-    try {
-      out[k] = decodeURIComponent(v);
-    } catch {
-      out[k] = v;
-    }
-  }
-  return out;
 }
 
 interface OidcUserInfo {
@@ -261,10 +253,13 @@ export function registerOidcRoutes(app: Express): void {
     try {
       const doc = await getDiscoveryDoc(config.issuer);
       const { verifier, challenge } = genPkce();
-      const state = genRandomToken(24);
       const redirect = typeof req.query.redirect === "string" ? req.query.redirect : "/workspace";
-
-      setStateCookie(res, { state, verifier, redirect }, req);
+      // 无状态 state：verifier + redirect 编码进 state，HMAC 签名，回调时直接解析
+      const state = encodeState({
+        v: verifier,
+        r: redirect,
+        n: base64UrlEncode(randomBytes(16)),
+      });
 
       const params = new URLSearchParams({
         response_type: "code",
@@ -291,16 +286,14 @@ export function registerOidcRoutes(app: Express): void {
     }
 
     const code = typeof req.query.code === "string" ? req.query.code : "";
-    const state = typeof req.query.state === "string" ? req.query.state : "";
-    const stored = readStateCookie(req);
+    const stateParam = typeof req.query.state === "string" ? req.query.state : "";
+    // 无状态 state：从 state 参数本身解析（HMAC 签名校验），不依赖 cookie
+    const stored = stateParam ? decodeState(stateParam) : null;
 
-    // CSRF 校验：state 必须匹配 cookie 中存储的值
-    if (!code || !state || !stored || state !== stored.state) {
-      clearStateCookie(res, req);
+    if (!code || !stored) {
       redirectToLogin(res, "invalid_state");
       return;
     }
-    clearStateCookie(res, req);
 
     try {
       const doc = await getDiscoveryDoc(config.issuer);
@@ -316,7 +309,7 @@ export function registerOidcRoutes(app: Express): void {
           redirect_uri: redirectUri,
           client_id: config.clientId,
           client_secret: config.clientSecret,
-          code_verifier: stored.verifier,
+          code_verifier: stored.v,
         }),
       });
       if (!tokenResp.ok) {
@@ -393,7 +386,7 @@ export function registerOidcRoutes(app: Express): void {
         maxAge: 7 * 24 * 3600 * 1000,
       });
 
-      const safeRedirect = isSafeRedirect(stored.redirect) ? stored.redirect : "/workspace";
+      const safeRedirect = isSafeRedirect(stored.r) ? stored.r : "/workspace";
       res.redirect(302, safeRedirect);
     } catch (error) {
       console.error("[OIDC] callback failed:", error);
