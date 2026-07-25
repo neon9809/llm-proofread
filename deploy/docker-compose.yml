@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  app:
+    image: ghcr.io/OWNER/llm-proofread:latest
+    # 或本地构建：
+    # build:
+    #   context: ..
+    #   dockerfile: deploy/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # MySQL 连接串（必填）
+      DATABASE_URL: mysql://proofread:proofread@db:3306/proofread
+      # 会话签名密钥（必填，请改为随机字符串）
+      JWT_SECRET: change-me-to-a-random-secret
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: proofread
+      MYSQL_USER: proofread
+      MYSQL_PASSWORD: proofread
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  db_data:

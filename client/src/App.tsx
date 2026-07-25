@@ -5,12 +5,27 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Workspace from "./pages/Workspace";
+import Settings from "./pages/Settings";
+import AdminUsers from "./pages/AdminUsers";
+import AdminTokens from "./pages/AdminTokens";
+import Embed from "./pages/Embed";
+import ApiDocs from "./pages/ApiDocs";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/workspace"} component={Workspace} />
+      <Route path={"/settings"} component={Settings} />
+      <Route path={"/settings/:tab"} component={Settings} />
+      <Route path={"/admin/users"} component={AdminUsers} />
+      <Route path={"/admin/tokens"} component={AdminTokens} />
+      <Route path={"/embed"} component={Embed} />
+      <Route path={"/api-docs"} component={ApiDocs} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

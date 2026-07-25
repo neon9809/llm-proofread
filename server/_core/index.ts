@@ -8,6 +8,8 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { ensureAdminUser } from "../bootstrap";
+import { registerOpenApi } from "../openApi";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,8 +36,16 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // 允许 iframe 嵌入：不设置 X-Frame-Options，并放开 frame-ancestors
+  app.use((_req, res, next) => {
+    res.removeHeader("X-Frame-Options");
+    res.setHeader("Content-Security-Policy", "frame-ancestors *");
+    next();
+  });
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  // 开放 REST API（Token 认证）
+  registerOpenApi(app);
   // tRPC API
   app.use(
     "/api/trpc",
@@ -60,6 +70,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // 初始化管理员账号（随机密码打印在日志中）
+    void ensureAdminUser();
   });
 }
 

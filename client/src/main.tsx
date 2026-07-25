@@ -43,6 +43,16 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
+        // iframe 嵌入模式：页面 URL 携带 ?token=pk_xxx 时，
+        // 将其作为 x-api-token 请求头转发给后端实现免登录。
+        try {
+          const embedToken = new URLSearchParams(window.location.search).get("token");
+          if (embedToken) {
+            return { "x-api-token": embedToken };
+          }
+        } catch {
+          // window unavailable
+        }
         // Preview auto-login fallback: when the browser blocks iframe cookies
         // (Safari ITP / private browsing / WebView), the runtime mirrors the
         // session into sessionStorage so we can forward it as a Bearer token.
