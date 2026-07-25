@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { writeAuditLog } from "./auditLog";
 import { isSecureRequest } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
@@ -439,12 +440,38 @@ export const appRouter = router({
         useRules: z.boolean().default(true),
         llmConfigId: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
-        return proofreadText(input.text, {
+      .mutation(async ({ input, ctx }) => {
+        const result = await proofreadText(input.text, {
           useLlm: input.useLlm,
           useRules: input.useRules,
           llmConfigId: input.llmConfigId,
         });
+
+        // 审计日志
+        const userAgent = typeof ctx.req.headers["user-agent"] === "string" ? ctx.req.headers["user-agent"] : "";
+        const ip = getClientIp(ctx.req);
+        if (ctx.localSession) {
+          writeAuditLog({
+            ip,
+            userAgent,
+            authLabel: `用户(${ctx.localSession.username})`,
+            sourceName: ctx.localSession.username,
+            originalText: input.text,
+            correctedText: result.paragraphs.map(p => p.corrected).join("\n"),
+            llmConfigName: result.llmConfigName ?? null,
+            paragraphs: result.paragraphs.map(p => ({
+              index: p.index,
+              original: p.original,
+              corrected: p.corrected,
+              changed: p.changed,
+              llmReason: p.llmReason,
+              llmError: p.llmError ?? null,
+              ruleHits: p.ruleHits.map(h => ({ type: h.type, word: h.word, replacement: h.replacement ?? null })),
+            })),
+          });
+        }
+
+        return result;
       }),
   }),
 });

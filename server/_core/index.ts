@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOidcRoutes } from "./oidc";
 import { registerStorageProxy } from "./storageProxy";
+import { startAuditLogRetention } from "../auditLog";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -72,6 +73,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // 启动初始化：自动执行数据库迁移（建表）后创建管理员账号（随机密码打印在日志中）
     void bootstrap();
+    // 启动审计日志过期清理定时任务（ENABLE_AUDIT_LOG=true 时生效）
+    startAuditLogRetention();
   });
 }
 

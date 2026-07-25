@@ -40,6 +40,13 @@ services:
       # 支持 markdown 超链接 [文字](URL) 与 \n 换行
       # 示例：© 2026 你的公司 · [京ICP备XXXXXXXX号](https://beian.miit.gov.cn/)\n[京公网安备 XXXXXXXX号](http://www.beian.gov.cn/)
       FOOTER_BEIAN: ""
+      # 审计日志（可选）：每次校对任务以 txt 文件写入挂载目录，供合规审计
+      # ENABLE_AUDIT_LOG=true 时启用；AUDIT_LOG_RETENTION_DAYS 保留天数，0=永久，默认 90
+      ENABLE_AUDIT_LOG: "false"
+      AUDIT_LOG_RETENTION_DAYS: "90"
+    volumes:
+      # 审计日志挂载目录（ENABLE_AUDIT_LOG=true 时生效）
+      - audit_logs:/app/audit-logs
     depends_on:
       db:
         condition: service_healthy
@@ -63,3 +70,4 @@ services:
 
 volumes:
   db_data:
+  audit_logs:

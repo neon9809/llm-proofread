@@ -8,9 +8,12 @@
  */
 import type { Express, Request, Response } from "express";
 import { getActiveApiToken, touchApiToken } from "./db";
+import { writeAuditLog, tokenShortId } from "./auditLog";
+import { getClientIp } from "./localAuth";
 import { proofreadText } from "./proofread/service";
+import type { ApiToken } from "../drizzle/schema";
 
-async function authenticate(req: Request): Promise<boolean> {
+async function authenticate(req: Request): Promise<ApiToken | null> {
   let token: string | undefined;
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) token = authHeader.slice(7).trim();
@@ -19,19 +22,19 @@ async function authenticate(req: Request): Promise<boolean> {
     if (typeof headerToken === "string") token = headerToken;
   }
   if (!token && typeof req.query.token === "string") token = req.query.token;
-  if (!token) return false;
+  if (!token) return null;
 
   const found = await getActiveApiToken(token);
-  if (!found) return false;
+  if (!found) return null;
   void touchApiToken(found.id);
-  return true;
+  return found;
 }
 
 export function registerOpenApi(app: Express) {
   app.post("/api/v1/proofread", async (req: Request, res: Response) => {
     try {
-      const ok = await authenticate(req);
-      if (!ok) {
+      const tokenRecord = await authenticate(req);
+      if (!tokenRecord) {
         res.status(401).json({ error: "无效或缺失的 API Token" });
         return;
       }
@@ -53,6 +56,27 @@ export function registerOpenApi(app: Express) {
       });
 
       const correctedFull = result.paragraphs.map(p => p.corrected).join("\n");
+
+      // 审计日志（异步写文件，不阻塞响应）
+      writeAuditLog({
+        ip: getClientIp(req),
+        userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : "",
+        authLabel: `API Token(${tokenRecord.name})`,
+        sourceName: `token-${tokenShortId(tokenRecord.token)}`,
+        originalText: text,
+        correctedText: correctedFull,
+        llmConfigName: result.llmConfigName ?? null,
+        paragraphs: result.paragraphs.map(p => ({
+          index: p.index,
+          original: p.original,
+          corrected: p.corrected,
+          changed: p.changed,
+          llmReason: p.llmReason,
+          llmError: p.llmError ?? null,
+          ruleHits: p.ruleHits.map(h => ({ type: h.type, word: h.word, replacement: h.replacement ?? null })),
+        })),
+      });
+
       const changedParagraphs = result.paragraphs.filter(p => p.changed);
 
       res.json({
