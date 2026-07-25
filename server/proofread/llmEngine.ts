@@ -57,6 +57,9 @@ export function normalizeBaseUrl(baseUrl: string): string {
   return url;
 }
 
+/** 单段 LLM 调用超时（毫秒）。长文本时 LLM 响应较慢，给足 90s */
+const LLM_REQUEST_TIMEOUT_MS = 90_000;
+
 export async function proofreadParagraphWithLlm(
   text: string,
   config: LlmProofreadConfig,
@@ -65,21 +68,36 @@ export async function proofreadParagraphWithLlm(
   const systemPrompt = config.prompt?.trim() || DEFAULT_PROOFREAD_PROMPT;
   const temperature = Number(config.temperature ?? "0.2");
 
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      temperature: Number.isFinite(temperature) ? temperature : 0.2,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: text },
-      ],
-    }),
-  });
+  // AbortController 防止 LLM 卡死导致请求无限挂起
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_REQUEST_TIMEOUT_MS);
+
+  let resp: Response;
+  try {
+    resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: Number.isFinite(temperature) ? temperature : 0.2,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text },
+        ],
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`LLM 请求超时（${LLM_REQUEST_TIMEOUT_MS / 1000}s）`);
+    }
+    throw err;
+  }
+  clearTimeout(timer);
 
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
