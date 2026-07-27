@@ -14,35 +14,174 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocalAuth } from "@/hooks/useLocalAuth";
 import { trpc } from "@/lib/trpc";
-import { Ban, KeyRound, Loader2, Plus, Replace, Sparkles, Star, Trash2, Zap } from "lucide-react";
+import { Ban, KeyRound, Loader2, Pencil, Plus, Replace, Sparkles, Star, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
 
 // ---------------- LLM 配置 ----------------
 
+interface LlmConfigFormValue {
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  prompt: string;
+  temperature: string;
+  concurrency: string;
+}
+
+const EMPTY_FORM: LlmConfigFormValue = {
+  name: "",
+  baseUrl: "",
+  apiKey: "",
+  model: "",
+  prompt: "",
+  temperature: "0.2",
+  concurrency: "5",
+};
+
+/** LLM 配置表单：新增/编辑共用。编辑时 apiKey 留空表示不修改 */
+function LlmConfigForm({
+  initialValue,
+  defaultPrompt,
+  submitLabel,
+  onSubmit,
+  isPending,
+}: {
+  initialValue: LlmConfigFormValue;
+  defaultPrompt?: string;
+  submitLabel: string;
+  onSubmit: (v: LlmConfigFormValue) => void;
+  isPending: boolean;
+}) {
+  const [form, setForm] = useState<LlmConfigFormValue>(initialValue);
+  const isEdit = initialValue !== EMPTY_FORM;
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <Label>配置名称</Label>
+        <Input
+          value={form.name}
+          onChange={e => setForm({ ...form, name: e.target.value })}
+          placeholder="如：DeepSeek V3"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>API Base URL</Label>
+        <Input
+          value={form.baseUrl}
+          onChange={e => setForm({ ...form, baseUrl: e.target.value })}
+          placeholder="https://api.deepseek.com/v1"
+        />
+        <p className="text-xs text-muted-foreground">
+          OpenAI: https://api.openai.com/v1 · DeepSeek: https://api.deepseek.com/v1 · 通义:
+          https://dashscope.aliyuncs.com/compatible-mode/v1
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label>API Key</Label>
+        <Input
+          type="password"
+          value={form.apiKey}
+          onChange={e => setForm({ ...form, apiKey: e.target.value })}
+          placeholder={isEdit ? "留空表示不修改" : "sk-..."}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>模型名称</Label>
+        <Input
+          value={form.model}
+          onChange={e => setForm({ ...form, model: e.target.value })}
+          placeholder="deepseek-chat / gpt-4o-mini / qwen-plus"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>校对 Prompt（留空使用内置默认）</Label>
+        <Textarea
+          value={form.prompt}
+          onChange={e => setForm({ ...form, prompt: e.target.value })}
+          placeholder={defaultPrompt?.slice(0, 80) + "……"}
+          className="min-h-[100px] text-xs"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Temperature</Label>
+        <Input
+          value={form.temperature}
+          onChange={e => setForm({ ...form, temperature: e.target.value })}
+          placeholder="0.2"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>并发数</Label>
+        <Input
+          value={form.concurrency}
+          onChange={e => setForm({ ...form, concurrency: e.target.value })}
+          placeholder="5"
+          type="number"
+          min={1}
+          max={100}
+        />
+        <p className="text-xs text-muted-foreground">
+          段落级并发调用数，取决于服务商并发上限（1-100）
+        </p>
+      </div>
+      <Button
+        className="w-full pressable"
+        disabled={isPending}
+        onClick={() => {
+          if (!form.name || !form.baseUrl || !form.model) {
+            toast.error("请填写名称、Base URL 与模型");
+            return;
+          }
+          if (!isEdit && !form.apiKey) {
+            toast.error("请填写 API Key");
+            return;
+          }
+          onSubmit(form);
+        }}
+      >
+        {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : submitLabel}
+      </Button>
+    </div>
+  );
+}
+
+type LlmConfigItem = {
+  id: number;
+  name: string;
+  baseUrl: string;
+  apiKeyMasked: string;
+  model: string;
+  prompt: string | null;
+  temperature: string | null;
+  concurrency: number;
+  isDefault: boolean;
+};
+
 function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
   const utils = trpc.useUtils();
   const { data: configs, isLoading } = trpc.llmConfigs.list.useQuery();
   const { data: defaultPrompt } = trpc.llmConfigs.defaultPrompt.useQuery();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    baseUrl: "",
-    apiKey: "",
-    model: "",
-    prompt: "",
-    temperature: "0.2",
-    concurrency: "5",
-  });
+  const [editTarget, setEditTarget] = useState<LlmConfigItem | null>(null);
 
   const invalidate = () => utils.llmConfigs.list.invalidate();
   const createMutation = trpc.llmConfigs.create.useMutation({
     onSuccess: () => {
       invalidate();
       setOpen(false);
-      setForm({ name: "", baseUrl: "", apiKey: "", model: "", prompt: "", temperature: "0.2", concurrency: "5" });
       toast.success("LLM 配置已添加");
+    },
+    onError: e => toast.error(e.message),
+  });
+  const updateMutation = trpc.llmConfigs.update.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setEditTarget(null);
+      toast.success("LLM 配置已更新");
     },
     onError: e => toast.error(e.message),
   });
@@ -81,98 +220,62 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
               <DialogHeader>
                 <DialogTitle>添加 LLM 配置</DialogTitle>
               </DialogHeader>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>配置名称</Label>
-                  <Input
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder="如：DeepSeek V3"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>API Base URL</Label>
-                  <Input
-                    value={form.baseUrl}
-                    onChange={e => setForm({ ...form, baseUrl: e.target.value })}
-                    placeholder="https://api.deepseek.com/v1"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    OpenAI: https://api.openai.com/v1 · DeepSeek: https://api.deepseek.com/v1 · 通义:
-                    https://dashscope.aliyuncs.com/compatible-mode/v1
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>API Key</Label>
-                  <Input
-                    type="password"
-                    value={form.apiKey}
-                    onChange={e => setForm({ ...form, apiKey: e.target.value })}
-                    placeholder="sk-..."
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>模型名称</Label>
-                  <Input
-                    value={form.model}
-                    onChange={e => setForm({ ...form, model: e.target.value })}
-                    placeholder="deepseek-chat / gpt-4o-mini / qwen-plus"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>校对 Prompt（留空使用内置默认）</Label>
-                  <Textarea
-                    value={form.prompt}
-                    onChange={e => setForm({ ...form, prompt: e.target.value })}
-                    placeholder={defaultPrompt?.slice(0, 80) + "……"}
-                    className="min-h-[100px] text-xs"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Temperature</Label>
-                  <Input
-                    value={form.temperature}
-                    onChange={e => setForm({ ...form, temperature: e.target.value })}
-                    placeholder="0.2"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>并发数</Label>
-                  <Input
-                    value={form.concurrency}
-                    onChange={e => setForm({ ...form, concurrency: e.target.value })}
-                    placeholder="5"
-                    type="number"
-                    min={1}
-                    max={100}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    段落级并发调用数，取决于服务商并发上限（1-100）
-                  </p>
-                </div>
-                <Button
-                  className="w-full pressable"
-                  disabled={createMutation.isPending}
-                  onClick={() => {
-                    if (!form.name || !form.baseUrl || !form.apiKey || !form.model) {
-                      toast.error("请填写名称、Base URL、API Key 与模型");
-                      return;
-                    }
-                    createMutation.mutate({
-                      ...form,
-                      concurrency: Number(form.concurrency) || 5,
-                      prompt: form.prompt || undefined,
-                      isDefault: (configs?.length ?? 0) === 0,
-                    });
-                  }}
-                >
-                  {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "保存配置"}
-                </Button>
-              </div>
+              <LlmConfigForm
+                initialValue={EMPTY_FORM}
+                defaultPrompt={defaultPrompt ?? undefined}
+                submitLabel="保存配置"
+                isPending={createMutation.isPending}
+                onSubmit={form => {
+                  createMutation.mutate({
+                    ...form,
+                    apiKey: form.apiKey,
+                    concurrency: Number(form.concurrency) || 5,
+                    prompt: form.prompt || undefined,
+                    isDefault: (configs?.length ?? 0) === 0,
+                  });
+                }}
+              />
             </DialogContent>
           </Dialog>
         )}
       </div>
+
+      {/* 编辑对话框 */}
+      {isAdmin && editTarget && (
+        <Dialog open onOpenChange={v => { if (!v) setEditTarget(null); }}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>编辑 LLM 配置</DialogTitle>
+            </DialogHeader>
+            <LlmConfigForm
+              initialValue={{
+                name: editTarget.name,
+                baseUrl: editTarget.baseUrl,
+                apiKey: "",
+                model: editTarget.model,
+                prompt: editTarget.prompt ?? "",
+                temperature: editTarget.temperature ?? "0.2",
+                concurrency: String(editTarget.concurrency ?? 5),
+              }}
+              defaultPrompt={defaultPrompt ?? undefined}
+              submitLabel="保存修改"
+              isPending={updateMutation.isPending}
+              onSubmit={form => {
+                updateMutation.mutate({
+                  id: editTarget.id,
+                  name: form.name,
+                  baseUrl: form.baseUrl,
+                  model: form.model,
+                  prompt: form.prompt || undefined,
+                  temperature: form.temperature,
+                  concurrency: Number(form.concurrency) || 5,
+                  ...(form.apiKey.trim() ? { apiKey: form.apiKey } : {}),
+                });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {!configs || configs.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-10 text-center">
@@ -225,6 +328,14 @@ function LlmConfigTab({ isAdmin }: { isAdmin: boolean }) {
                       设为默认
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full h-7 text-xs pressable"
+                    onClick={() => setEditTarget(c)}
+                  >
+                    <Pencil className="w-3 h-3 mr-1" /> 编辑
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
