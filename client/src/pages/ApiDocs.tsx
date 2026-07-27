@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const REQUEST_EXAMPLE = `curl -X POST https://your-domain/api/v1/proofread \\
   -H "Authorization: Bearer pk_xxxxxxxx" \\
@@ -44,6 +45,7 @@ function CodeBlock({ children }: { children: string }) {
 }
 
 export default function ApiDocs() {
+  usePageTitle("API 文档");
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto animate-rise space-y-8">

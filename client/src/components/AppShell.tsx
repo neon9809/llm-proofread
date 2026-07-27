@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BookOpenText, ChevronDown, FileText, KeyRound, LogOut, Settings2, Users } from "lucide-react";
+import { ChevronDown, FileText, KeyRound, LogOut, Settings2, Users } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect } from "react";
 
@@ -61,9 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-6">
             <Link href="/workspace" className="flex items-center gap-2 pressable">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <BookOpenText className="w-4 h-4 text-primary-foreground" />
-              </div>
+              <img src="/logo.png" alt="文语校对" className="w-7 h-7 rounded-lg" />
               <span className="font-semibold tracking-tight text-[15px]">文语校对</span>
             </Link>
             <nav className="hidden sm:flex items-center gap-1">
@@ -114,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate("/api-docs")}>
-                <BookOpenText className="w-4 h-4 mr-2" /> API 文档
+                <FileText className="w-4 h-4 mr-2" /> API 文档
               </DropdownMenuItem>
               {!isOidc && (
                 <DropdownMenuItem onClick={() => navigate("/settings/password")}>

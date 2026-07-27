@@ -1,12 +1,15 @@
 import { Footer } from "@/components/Footer";
 import { ProofreadPanel } from "@/components/ProofreadPanel";
 import { getEmbedToken, useLocalAuth } from "@/hooks/useLocalAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 /**
  * iframe 嵌入模式：通过 ?token=<API Token> 免登录访问。
  * 精简界面，无导航栏。
  */
 export default function Embed() {
+  usePageTitle("校对");
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { user, loading } = useLocalAuth();
   const token = getEmbedToken();
 

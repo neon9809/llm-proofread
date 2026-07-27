@@ -1,9 +1,11 @@
 import { useLocalAuth } from "@/hooks/useLocalAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 
 /** 首页：根据登录状态重定向到工作区或登录页 */
 export default function Home() {
+  usePageTitle("首页");
   const { loading, isAuthenticated } = useLocalAuth();
   const [, navigate] = useLocation();
 

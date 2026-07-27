@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocalAuth } from "@/hooks/useLocalAuth";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { trpc } from "@/lib/trpc";
 import { Ban, KeyRound, ListChecks, Loader2, Pencil, Plus, Replace, Sparkles, Star, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
@@ -629,6 +630,7 @@ function PasswordTab() {
 // ---------------- 主页面 ----------------
 
 export default function Settings() {
+  usePageTitle("配置");
   const { isAdmin, isOidc } = useLocalAuth();
   const params = useParams<{ tab?: string }>();
   const [, navigate] = useLocation();

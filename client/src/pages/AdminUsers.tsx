@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -260,6 +261,7 @@ function LoginLogsTab() {
 }
 
 export default function AdminUsers() {
+  usePageTitle("用户管理");
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto animate-rise">

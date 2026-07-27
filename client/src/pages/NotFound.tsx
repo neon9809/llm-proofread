@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { AlertCircle, Home } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function NotFound() {
+  usePageTitle("页面不存在");
   const [, setLocation] = useLocation();
 
   const handleGoHome = () => {

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ function fmt(d: Date | string | null | undefined) {
 }
 
 export default function AdminTokens() {
+  usePageTitle("API Token");
   const utils = trpc.useUtils();
   const { data: tokens, isLoading } = trpc.apiTokens.list.useQuery();
   const [open, setOpen] = useState(false);

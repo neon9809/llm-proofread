@@ -3,13 +3,15 @@ import { Turnstile } from "@/components/Turnstile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { trpc } from "@/lib/trpc";
-import { BookOpenText, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 export default function Login() {
+  usePageTitle("登录");
   const [, navigate] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -97,9 +99,7 @@ export default function Login() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm animate-pop">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/25">
-            <BookOpenText className="w-7 h-7 text-primary-foreground" />
-          </div>
+          <img src="/logo.png" alt="文语校对" className="w-16 h-16 rounded-2xl shadow-lg mb-4" />
           <h1 className="text-2xl font-semibold tracking-tight">文语校对</h1>
           <p className="text-sm text-muted-foreground mt-1.5">大模型驱动的智能文本校对系统</p>
         </div>
