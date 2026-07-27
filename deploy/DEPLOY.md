@@ -116,4 +116,16 @@ curl -X POST https://your-domain/api/v1/proofread \
   -d '{"text": "待校对文本", "useLlm": true, "useRules": true}'
 ```
 
-响应包含 `originalText`（原文）、`correctedText`（修改后全文）、`paragraphs`（逐段明细，含命中与修改）。
+响应返回 `original`（原文）、`corrected`（校对后全文）、`paragraphs`（逐段明细）、`llm_config`（使用的模型）、`changed_count`（有修改的段落数）。可选参数：`use_fixed_expressions`（启用固定表述参考库）。
+
+## 审计日志（可选）
+
+设置 `ENABLE_AUDIT_LOG=true` 后，每次校对任务会以 txt 文件写入 `/app/audit-logs` 目录（已挂载为 Docker volume，容器重建不丢失）：
+
+- **文件名**：`时间_来源ID_随机串.txt`
+- **内容**：时间、来源 IP、浏览器 UA、认证方式、提交文本、校对结果、逐段明细
+- **保留期**：`AUDIT_LOG_RETENTION_DAYS` 天（默认 90，0 = 永久），每小时自动清理
+
+## 固定表述参考库
+
+管理员在「配置 → 固定表述」维护标准表述文本。校对时启用「固定表述」开关后，该内容自动追加到 LLM 系统提示词末尾。

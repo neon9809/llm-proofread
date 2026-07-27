@@ -8,10 +8,14 @@
 | --- | --- |
 | 双重审核引擎 | 规则引擎（违禁词 + 替换规则）与 LLM 校对并行执行，结果合并展示 |
 | 段落级 Inline Diff | 每段原文与校对结果内联对比，绿色高亮新增、红色删除线标注删除、违禁词标红 |
-| LLM 配置管理 | 支持配置 Base URL / API Key / 模型 / 自定义 Prompt，兼容 OpenAI、DeepSeek、通义千问等 OpenAI 兼容接口 |
+| LLM 配置管理 | 支持配置 Base URL / API Key / 模型 / 自定义 Prompt / 并发数，兼容 OpenAI、DeepSeek、通义千问等 OpenAI 兼容接口；管理员可编辑已有配置 |
+| 固定表述参考库 | 管理员维护标准表述库（领导姓名职务、单位机构、理论概念等），校对时启用「固定表述」开关后追加到 LLM 提示词作为标准参考 |
 | 违禁词管理 | 手动添加、批量导入、删除；命中段落直接标红提示 |
-| 替换规则管理 | 键值对配置（如「的的地」→「地」），命中后高亮并给出替换建议 |
-| 用户与安全 | 管理员启动时自动创建（随机密码打印在容器日志），用户管理、每次登录记录 IP |
+| 替换规则管理 | 键值对配置（如「的的地」->「地」），命中后高亮并给出替换建议 |
+| 用户与安全 | 管理员启动时自动创建（随机密码打印在容器日志），用户管理、每次登录记录 IP、强制改密 |
+| OIDC 单点登录 | 标准授权码 + PKCE 流程，支持任意 OIDC IdP（Google / Authentik / Keycloak 等）；可配置新用户需管理员审批 |
+| 人机验证 | 可选 Cloudflare Turnstile，登录页强制人机校验 |
+| 审计日志 | 可选启用，每次校对任务以 txt 文件写入挂载目录，含来源 IP、UA、提交文本、校对结果，支持保留期自动清理 |
 | iframe 嵌入 | `/embed?token=pk_xxx` 免登录嵌入，精简界面 |
 | 开放 API | 管理员生成 Token，`POST /api/v1/proofread` 返回原文、修改后全文与逐段修改明细 |
 | Apple Design 风格 | 系统字体、负字距大标题、半透明工具栏、弹性动画、`prefers-reduced-motion` 适配 |
@@ -46,7 +50,7 @@ docker compose logs app | grep "初始密码"
 curl -X POST https://your-domain/api/v1/proofread \
   -H "Authorization: Bearer pk_xxx" \
   -H "Content-Type: application/json" \
-  -d '{"text": "待校对文本", "use_llm": true, "use_rules": true}'
+  -d '{"text": "待校对文本", "use_llm": true, "use_rules": true, "use_fixed_expressions": false}'
 ```
 
 响应字段：`original`（原文）、`corrected`（修改后全文）、`paragraphs`（逐段明细：原文、修改后、是否变更、LLM 说明、规则命中及位置）。完整文档见应用内「API 文档」页。
@@ -67,7 +71,7 @@ pnpm test       # 运行 vitest 测试
 
 ## Credit
 
-本项目由 [Manus AI](https://manus.im) 构建。
+本项目由 [neon9809](https://github.com/neon9809) 开发，基于 Manus AI 模板构建。欢迎在 [GitHub](https://github.com/neon9809/llm-proofread) 提 Issue 与 PR。
 
 ### 需求来源（用户提示词整理）
 
