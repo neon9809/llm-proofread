@@ -36,8 +36,10 @@ services:
       OIDC_DISPLAY_NAME: "SSO"
       # OIDC 新用户是否需要管理员手动启用（true=注册后默认禁用，需在用户管理页启用）
       OIDC_APPROVE_REQUIRED: "false"
-      # 登录页底部备案信息（可选，留空则不显示 footer）
-      # 支持 markdown 超链接 [文字](URL) 与 \n 换行
+      # 登录页底部备案信息（可选）
+      # - 留空：显示默认「GitHub开源项目 文语校对」
+      # - disable：登录页、工作区、iframe 嵌入页均不显示任何 footer
+      # - 自定义文本：支持 markdown 超链接 [文字](URL) 与 \n 换行
       # 示例：© 2026 你的公司 · [京ICP备XXXXXXXX号](https://beian.miit.gov.cn/)\n[京公网安备 XXXXXXXX号](http://www.beian.gov.cn/)
       FOOTER_BEIAN: ""
       # 审计日志（可选）：每次校对任务以 txt 文件写入挂载目录，供合规审计

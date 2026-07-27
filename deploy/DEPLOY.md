@@ -48,7 +48,7 @@ docker compose logs app | grep "初始密码"
 | `OIDC_SCOPES` | 否 | OIDC scope，默认 `openid profile email` |
 | `OIDC_DISPLAY_NAME` | 否 | 登录页 SSO 按钮文案，默认 `SSO` |
 | `OIDC_APPROVE_REQUIRED` | 否 | `true` 时 OIDC 新用户注册后默认禁用，需管理员在「用户管理」页启用后方可登录 |
-| `FOOTER_BEIAN` | 否 | 登录页底部显示的备案信息文本，留空则不显示 |
+| `FOOTER_BEIAN` | 否 | 登录页、工作区、iframe 嵌入页底部显示的文本，见下方说明 |
 
 ## Cloudflare Turnstile 人机验证（可选）
 
@@ -57,9 +57,13 @@ docker compose logs app | grep "初始密码"
 3. 重启容器后登录页会出现验证码 widget，登录时由服务端调用 CF siteverify 校验
 4. 两个变量必须同时填写才会启用；任一留空则不开启验证（开发环境友好）
 
-## 登录页备案信息（可选）
+## Footer 底部信息（可选）
 
-将备案文本填入 `FOOTER_BEIAN`，会在登录页底部以小字号 footer 形式显示。支持 markdown 超链接格式 `[文字](URL)`（仅 http/https），用 `\n` 换行。留空则不显示 footer。
+在登录页、工作区、iframe 嵌入页底部显示的文本，由 `FOOTER_BEIAN` 环境变量控制：
+
+- **留空（默认）**：显示「GitHub开源项目 [文语校对](https://github.com/neon9809/llm-proofread)」
+- **`disable`**：所有页面均不显示任何 footer
+- **自定义文本**：支持 markdown 超链接格式 `[文字](URL)`（仅 http/https），用 `\n` 换行
 
 示例：
 

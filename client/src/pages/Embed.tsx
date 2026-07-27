@@ -1,3 +1,4 @@
+import { Footer } from "@/components/Footer";
 import { ProofreadPanel } from "@/components/ProofreadPanel";
 import { getEmbedToken, useLocalAuth } from "@/hooks/useLocalAuth";
 
@@ -33,10 +34,11 @@ export default function Embed() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="max-w-3xl mx-auto px-4 py-6 w-full">
         <ProofreadPanel compact />
       </div>
+      <Footer />
     </div>
   );
 }
