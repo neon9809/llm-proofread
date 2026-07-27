@@ -9,6 +9,8 @@ export interface LlmProofreadConfig {
   prompt?: string | null;
   temperature?: string | null;
   concurrency?: number;
+  /** 固定表述文本，启用时追加到 system prompt 末尾 */
+  fixedExpressions?: string | null;
 }
 
 export interface LlmParagraphResult {
@@ -66,7 +68,11 @@ export async function proofreadParagraphWithLlm(
   config: LlmProofreadConfig,
 ): Promise<LlmParagraphResult> {
   const url = `${normalizeBaseUrl(config.baseUrl)}/chat/completions`;
-  const systemPrompt = config.prompt?.trim() || DEFAULT_PROOFREAD_PROMPT;
+  const basePrompt = config.prompt?.trim() || DEFAULT_PROOFREAD_PROMPT;
+  // 启用固定表述时，把固定表述文本追加到 system prompt 末尾
+  const systemPrompt = config.fixedExpressions?.trim()
+    ? `${basePrompt}\n\n${config.fixedExpressions.trim()}`
+    : basePrompt;
   const temperature = Number(config.temperature ?? "0.2");
 
   // AbortController 防止 LLM 卡死导致请求无限挂起

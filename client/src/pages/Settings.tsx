@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocalAuth } from "@/hooks/useLocalAuth";
 import { trpc } from "@/lib/trpc";
-import { Ban, KeyRound, Loader2, Pencil, Plus, Replace, Sparkles, Star, Trash2, Zap } from "lucide-react";
+import { Ban, KeyRound, ListChecks, Loader2, Pencil, Plus, Replace, Sparkles, Star, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
@@ -523,6 +523,56 @@ function ReplaceRulesTab({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+// ---------------- 固定表述 ----------------
+
+function FixedExpressionsTab({ isAdmin }: { isAdmin: boolean }) {
+  const utils = trpc.useUtils();
+  const { data: content, isLoading } = trpc.settings.fixedExpressions.get.useQuery();
+  const [value, setValue] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  // 首次加载后填充到编辑框
+  if (!loaded && typeof content === "string") {
+    setValue(content);
+    setLoaded(true);
+  }
+
+  const updateMutation = trpc.settings.fixedExpressions.update.useMutation({
+    onSuccess: () => {
+      utils.settings.fixedExpressions.get.invalidate();
+      toast.success("固定表述库已保存");
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  if (isLoading) return <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto my-12" />;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        维护固定表述参考库（领导姓名职务、单位机构名称、理论概念等）。校对时启用「固定表述」开关后，
+        此内容会追加到 LLM 校对提示词末尾，作为标准表述参考。
+      </p>
+      <Textarea
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        placeholder="根据用户的需求，现已加载固定表述参考库……&#10;&#10;## 固定表述库&#10;### 一、领导姓名、职务、单位&#10;……"
+        className="min-h-[400px] text-[13px] font-mono leading-6"
+        disabled={!isAdmin}
+      />
+      {isAdmin && (
+        <Button
+          className="rounded-full pressable"
+          disabled={updateMutation.isPending}
+          onClick={() => updateMutation.mutate({ value })}
+        >
+          {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "保存固定表述库"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 // ---------------- 修改密码 ----------------
 
 function PasswordTab() {
@@ -602,6 +652,9 @@ export default function Settings() {
             <TabsTrigger value="rules" className="rounded-full text-[13px] gap-1">
               <Replace className="w-3.5 h-3.5" /> 替换规则
             </TabsTrigger>
+            <TabsTrigger value="fixed" className="rounded-full text-[13px] gap-1">
+              <ListChecks className="w-3.5 h-3.5" /> 固定表述
+            </TabsTrigger>
             {!isOidc && (
               <TabsTrigger value="password" className="rounded-full text-[13px] gap-1">
                 <KeyRound className="w-3.5 h-3.5" /> 密码
@@ -616,6 +669,9 @@ export default function Settings() {
           </TabsContent>
           <TabsContent value="rules">
             <ReplaceRulesTab isAdmin={isAdmin} />
+          </TabsContent>
+          <TabsContent value="fixed">
+            <FixedExpressionsTab isAdmin={isAdmin} />
           </TabsContent>
           {!isOidc && (
             <TabsContent value="password">

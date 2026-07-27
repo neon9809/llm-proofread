@@ -9,6 +9,7 @@ import {
   localUsers,
   loginLogs,
   replaceRules,
+  settings,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -278,4 +279,29 @@ export async function touchApiToken(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(apiTokens).set({ lastUsedAt: new Date() }).where(eq(apiTokens.id, id));
+}
+
+// ---------- 通用设置（键值表） ----------
+
+// 设置项内存缓存（固定表述等内容不频繁变更，30s TTL 降低 DB 压力）
+const settingsCache = new Map<string, { value: string; expiresAt: number }>();
+
+export async function getSetting(key: string): Promise<string | null> {
+  const cached = settingsCache.get(key);
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+  const value = rows[0]?.value ?? null;
+  if (value !== null) {
+    settingsCache.set(key, { value, expiresAt: Date.now() + 30_000 });
+  }
+  return value;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  await db.insert(settings).values({ key, value }).onDuplicateKeyUpdate({ set: { value } });
+  settingsCache.set(key, { value, expiresAt: Date.now() + 30_000 });
 }

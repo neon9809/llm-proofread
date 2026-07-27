@@ -431,6 +431,21 @@ export const appRouter = router({
       }),
   }),
 
+  /** 通用设置（管理员维护，如固定表述参考库） */
+  settings: router({
+    fixedExpressions: router({
+      get: localProtectedProcedure.query(async () => {
+        return (await db.getSetting("fixed_expressions")) ?? "";
+      }),
+      update: localAdminProcedure
+        .input(z.object({ value: z.string().max(20000) }))
+        .mutation(async ({ input }) => {
+          await db.setSetting("fixed_expressions", input.value);
+          return { success: true } as const;
+        }),
+    }),
+  }),
+
   /** 校对核心接口（登录用户或 Token 免登录均可用） */
   proofread: router({
     run: localProtectedProcedure
@@ -438,12 +453,14 @@ export const appRouter = router({
         text: z.string().min(1).max(100000),
         useLlm: z.boolean().default(true),
         useRules: z.boolean().default(true),
+        useFixedExpressions: z.boolean().default(false),
         llmConfigId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const result = await proofreadText(input.text, {
           useLlm: input.useLlm,
           useRules: input.useRules,
+          useFixedExpressions: input.useFixedExpressions,
           llmConfigId: input.llmConfigId,
         });
 

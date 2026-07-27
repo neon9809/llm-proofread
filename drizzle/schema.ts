@@ -82,3 +82,12 @@ export const apiTokens = mysqlTable("api_tokens", {
 });
 
 export type ApiToken = typeof apiTokens.$inferSelect;
+
+/** 通用键值设置表：存储固定表述文本等单值配置 */
+export const settings = mysqlTable("settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Setting = typeof settings.$inferSelect;

@@ -1,7 +1,7 @@
 /**
  * 校对服务：整合段落切分、规则引擎与 LLM 双重审核，合并结果。
  */
-import { listForbiddenWords, listReplaceRules, getDefaultLlmConfig, getLlmConfigById } from "../db";
+import { listForbiddenWords, listReplaceRules, getDefaultLlmConfig, getLlmConfigById, getSetting } from "../db";
 import { splitParagraphs } from "./splitter";
 import { checkParagraph, applyReplaceRules, type RuleHit } from "./ruleEngine";
 import { proofreadParagraphWithLlm, type LlmProofreadConfig } from "./llmEngine";
@@ -25,6 +25,8 @@ export interface ProofreadOptions {
   useLlm?: boolean;
   useRules?: boolean;
   llmConfigId?: number;
+  /** 是否启用固定表述参考库（追加到 LLM system prompt） */
+  useFixedExpressions?: boolean;
   /** 并发调用 LLM 的段落数 */
   concurrency?: number;
 }
@@ -36,7 +38,7 @@ export interface ProofreadResult {
 }
 
 export async function proofreadText(text: string, options: ProofreadOptions = {}): Promise<ProofreadResult> {
-  const { useLlm = true, useRules = true, llmConfigId } = options;
+  const { useLlm = true, useRules = true, llmConfigId, useFixedExpressions = false } = options;
 
   const paragraphs = splitParagraphs(text);
   const [forbidden, rules] = useRules
@@ -50,6 +52,13 @@ export async function proofreadText(text: string, options: ProofreadOptions = {}
     if (cfg) {
       llmConfig = cfg;
       llmConfigName = cfg.name;
+      // 启用固定表述时，从设置表加载文本追加到 LLM 配置的 prompt
+      if (useFixedExpressions) {
+        const fixedExpressions = await getSetting("fixed_expressions");
+        if (fixedExpressions) {
+          llmConfig = { ...cfg, fixedExpressions };
+        }
+      }
     }
   }
   // 并发数优先用 LLM 配置里的值，其次 options 传入，默认 5

@@ -43,6 +43,7 @@ export function ProofreadPanel({ compact = false }: { compact?: boolean }) {
   const [text, setText] = useState("");
   const [useLlm, setUseLlm] = useState(true);
   const [useRules, setUseRules] = useState(true);
+  const [useFixedExpressions, setUseFixedExpressions] = useState(false);
   const [llmConfigId, setLlmConfigId] = useState<string>("default");
   const [paragraphs, setParagraphs] = useState<ParagraphView[] | null>(null);
   const [llmConfigName, setLlmConfigName] = useState<string | undefined>();
@@ -82,11 +83,16 @@ export function ProofreadPanel({ compact = false }: { compact?: boolean }) {
       toast.error("请至少启用一种审核引擎");
       return;
     }
+    if (useFixedExpressions && !useLlm) {
+      toast.error("固定表述需要配合大模型校对使用");
+      return;
+    }
     setParagraphs(null);
     runMutation.mutate({
       text,
       useLlm,
       useRules,
+      useFixedExpressions,
       llmConfigId: llmConfigId !== "default" ? Number(llmConfigId) : undefined,
     });
   };
@@ -156,6 +162,12 @@ export function ProofreadPanel({ compact = false }: { compact?: boolean }) {
               <Switch checked={useRules} onCheckedChange={setUseRules} />
               <span className="text-[13px] font-medium">规则引擎</span>
             </label>
+            {useLlm && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Switch checked={useFixedExpressions} onCheckedChange={setUseFixedExpressions} />
+                <span className="text-[13px] font-medium">固定表述</span>
+              </label>
+            )}
             {useLlm && llmConfigs && llmConfigs.length > 0 && (
               <Select value={llmConfigId} onValueChange={setLlmConfigId}>
                 <SelectTrigger className="h-8 rounded-full text-[13px] w-auto min-w-[140px]">

@@ -39,7 +39,7 @@ export function registerOpenApi(app: Express) {
         return;
       }
 
-      const { text, use_llm = true, use_rules = true, llm_config_id } = req.body ?? {};
+      const { text, use_llm = true, use_rules = true, use_fixed_expressions = false, llm_config_id } = req.body ?? {};
       if (typeof text !== "string" || text.trim().length === 0) {
         res.status(400).json({ error: "text 字段必填且不能为空" });
         return;
@@ -52,6 +52,7 @@ export function registerOpenApi(app: Express) {
       const result = await proofreadText(text, {
         useLlm: Boolean(use_llm),
         useRules: Boolean(use_rules),
+        useFixedExpressions: Boolean(use_fixed_expressions),
         llmConfigId: typeof llm_config_id === "number" ? llm_config_id : undefined,
       });
 
